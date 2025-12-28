@@ -235,7 +235,7 @@ fn log_frame_to_mdf4(
 ) {
     use mdf4_rs::can::FdFlags;
 
-    let Some(ref mut logger) = logger else { return };
+    let Some(logger) = logger else { return };
     let timestamp_us = (frame.timestamp * 1_000_000.0) as u64;
 
     if frame.is_fd {
