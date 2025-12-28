@@ -317,8 +317,9 @@ pub fn filter_frames(
     state: tauri::State<'_, Arc<AppState>>,
 ) -> FilterResult {
     // Build DBC message cache if needed
-    let needs_dbc =
-        filters.match_status != MatchStatus::All || !filters.messages.is_empty() || !filters.signals.is_empty();
+    let needs_dbc = filters.match_status != MatchStatus::All
+        || !filters.messages.is_empty()
+        || !filters.signals.is_empty();
 
     let msg_cache = if needs_dbc {
         build_message_cache(&state)

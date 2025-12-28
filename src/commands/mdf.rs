@@ -135,7 +135,11 @@ pub async fn load_mdf4(
 /// - Bytes 5+: Data (8 bytes for classic CAN, up to 64 for CAN FD)
 ///
 /// For CAN FD with DLC > 8, byte 5 contains FD flags (BRS, ESI).
-pub fn parse_can_dataframe(bytes: &[u8], timestamp: f64, channel_name: &str) -> Option<CanFrameDto> {
+pub fn parse_can_dataframe(
+    bytes: &[u8],
+    timestamp: f64,
+    channel_name: &str,
+) -> Option<CanFrameDto> {
     if bytes.len() < 5 {
         return None;
     }

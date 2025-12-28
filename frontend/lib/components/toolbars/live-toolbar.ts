@@ -51,6 +51,7 @@ export class LiveToolbarElement extends HTMLElement {
         <option value="">Select CAN interface...</option>
       </select>
       <button class="cv-btn" id="refreshBtn">↻</button>
+      <span class="cv-toolbar-sep"></span>
       <button class="cv-btn success" id="startBtn" disabled>Start</button>
       <button class="cv-btn danger" id="stopBtn" disabled>Stop</button>
       <button class="cv-btn" id="clearBtn">Clear</button>
