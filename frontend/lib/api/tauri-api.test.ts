@@ -171,7 +171,7 @@ describe('TauriApi', () => {
 
       await api.startCapture('can0', '/tmp/capture.mf4');
 
-      expect(mockTauri.core.invoke).toHaveBeenCalledWith('start_capture', { interface: 'can0', captureFile: '/tmp/capture.mf4', append: false });
+      expect(mockTauri.core.invoke).toHaveBeenCalledWith('start_capture', { interface: 'can0', captureFile: '/tmp/capture.mf4', append: false, filters: null });
     });
 
     it('should start capture with append mode', async () => {
@@ -179,7 +179,7 @@ describe('TauriApi', () => {
 
       await api.startCapture('can0', '/tmp/capture.mf4', true);
 
-      expect(mockTauri.core.invoke).toHaveBeenCalledWith('start_capture', { interface: 'can0', captureFile: '/tmp/capture.mf4', append: true });
+      expect(mockTauri.core.invoke).toHaveBeenCalledWith('start_capture', { interface: 'can0', captureFile: '/tmp/capture.mf4', append: true, filters: null });
     });
 
     it('should stop capture', async () => {
