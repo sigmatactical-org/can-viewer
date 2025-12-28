@@ -902,7 +902,18 @@
    ───────────────────────────────────────────────────────────────────────────── */
 .cv-about-header { border-bottom: none; align-items: center; gap: 32px; }
 
+#aboutFeatures .cv-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+@media (max-width: 1400px) { #aboutFeatures .cv-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 1000px) { #aboutFeatures .cv-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px) { #aboutFeatures .cv-grid { grid-template-columns: repeat(2, 1fr); } }
 #aboutFeatures .cv-card { border-left: 3px solid var(--cv-accent); }
+#aboutFeatures .cv-card-pro { border-left: 3px solid var(--cv-warning); }
+#aboutFeatures .cv-card-pro .cv-card-title::after { content: ' Pro'; font-size: 0.7em; color: var(--cv-warning); font-weight: normal; }
 #aboutAcknowledgments .cv-card { border-left: 3px solid var(--cv-success); }
 
 .cv-about-title-group { display: flex; flex-direction: column; gap: 2px; }

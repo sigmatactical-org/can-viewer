@@ -11,6 +11,7 @@ import type { CanViewerApi, CanViewerConfig, MessageInfo, DbcInfo, CanViewerExte
 import { extractFilename } from './utils';
 import { events, emitDbcChanged, type TabSwitchEvent } from './events';
 import { appStore } from './store';
+import { getVersion } from '@tauri-apps/api/app';
 
 // Import toolbar components
 import './components/toolbars';
@@ -129,8 +130,21 @@ export class CanViewerElement extends HTMLElement {
 
   connectedCallback(): void {
     this.render();
+    this.loadVersion();
     window.addEventListener('beforeunload', this.boundBeforeUnload);
     events.on('tab:switch', this.handleTabSwitch);
+  }
+
+  private async loadVersion(): Promise<void> {
+    try {
+      const version = await getVersion();
+      const versionEl = this.shadow.querySelector('#appVersion');
+      if (versionEl) {
+        versionEl.textContent = `v${version}`;
+      }
+    } catch {
+      // Fallback if not running in Tauri
+    }
   }
 
   disconnectedCallback(): void {
@@ -192,7 +206,7 @@ export class CanViewerElement extends HTMLElement {
           <cv-dbc-toolbar></cv-dbc-toolbar>
           <div id="aboutTab" class="cv-toolbar cv-tab-pane cv-about-header">
             <span class="cv-about-title">${this.config.appName}</span>
-            <span class="cv-about-version">v0.1.2</span>
+            <span class="cv-about-version" id="appVersion"></span>
             <span class="cv-about-desc">A desktop application for viewing and analyzing CAN bus data from MDF4 files and live SocketCAN interfaces.</span>
           </div>
         </header>
