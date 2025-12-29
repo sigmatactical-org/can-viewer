@@ -1,7 +1,5 @@
 # can-viewer
 
-> **⚠️ Work in Progress**: This project is under active development and not yet ready for production use.
-
 A desktop application for viewing and analyzing CAN bus data from MDF4 files and live SocketCAN interfaces.
 
 [![License](https://img.shields.io/crates/l/can-viewer.svg)](LICENSE)
