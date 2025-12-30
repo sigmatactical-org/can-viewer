@@ -1,5 +1,5 @@
 import type { CanFrame, DecodedSignal, DbcInfo, CanViewerConfig, MessageInfo } from './types';
-import { defaultConfig, createEmptyFilters, parseCanIds, parseMessageNames, matchDataPattern, type Filters } from './config';
+import { defaultConfig, createEmptyFilters, parseCanIds, parseMessageNames, filterFrames, type Filters } from './config';
 
 /** CAN Viewer component state */
 export interface ViewerState {
@@ -94,44 +94,7 @@ export function getMessageInfo(state: ViewerState, canId: number): MessageInfo |
 
 /** Filter frames based on current filter state */
 export function getFilteredFrames(state: ViewerState): CanFrame[] {
-  return state.frames.filter(frame => {
-    // Time range filter
-    if (state.filters.timeMin !== null && frame.timestamp < state.filters.timeMin) return false;
-    if (state.filters.timeMax !== null && frame.timestamp > state.filters.timeMax) return false;
-
-    // CAN ID filter
-    if (state.filters.canIds?.length && !state.filters.canIds.includes(frame.can_id)) return false;
-
-    // Channel filter
-    if (state.filters.channel && frame.channel !== state.filters.channel) return false;
-
-    // Data pattern filter
-    if (state.filters.dataPattern && !matchDataPattern(frame.data, state.filters.dataPattern)) return false;
-
-    // Get message info for DBC-related filters
-    const msgInfo = getMessageInfo(state, frame.can_id);
-    const hasMatch = msgInfo !== null;
-
-    // Match status filter
-    if (state.filters.matchStatus === 'matched' && !hasMatch) return false;
-    if (state.filters.matchStatus === 'unmatched' && hasMatch) return false;
-
-    // Message name filter
-    if (state.filters.messages?.length) {
-      if (!hasMatch) return false;
-      const msgName = msgInfo.name.toLowerCase();
-      if (!state.filters.messages.some(m => msgName.includes(m))) return false;
-    }
-
-    // Signal name filter
-    if (state.filters.signals?.length) {
-      if (!hasMatch) return false;
-      const signalNames = msgInfo.signals.map(s => s.name.toLowerCase());
-      if (!state.filters.signals.some(s => signalNames.some(sn => sn.includes(s)))) return false;
-    }
-
-    return true;
-  });
+  return filterFrames(state.frames, state.filters, state.dbcInfo);
 }
 
 /** Update filtered frames cache */

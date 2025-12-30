@@ -32,7 +32,7 @@ describe('state', () => {
       expect(state.dbcInfo).toBeNull();
       expect(state.dbcLoaded).toBe(false);
       expect(state.isCapturing).toBe(false);
-      expect(state.activeTab).toBe('mdf4');
+      expect(state.activeTab).toBe('dbc');
       expect(state.selectedMessageId).toBeNull();
       expect(state.selectedFrameIndex).toBeNull();
     });

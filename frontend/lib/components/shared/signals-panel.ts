@@ -129,16 +129,19 @@ export class SignalsPanelElement extends HTMLElement {
       if (this.signals.length === 0 && this.errors.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" class="cv-signals-empty">No signals decoded</td></tr>';
       } else {
-        tbody.innerHTML = this.signals.map(sig => `
-          <tr>
-            <td class="cv-signal-name">
-              ${sig.signal_name}
-              ${sig.description ? `<div class="cv-signal-description">${escapeHtml(sig.description)}</div>` : ''}
-            </td>
-            <td class="cv-physical-value">${formatSignalValue(sig.value)}</td>
-            <td class="cv-unit-highlight">${sig.unit || '-'}</td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = this.signals.map(sig => {
+          // If there's a value description, show it prominently with numeric value secondary
+          const valueDisplay = sig.description
+            ? `<span class="cv-value-desc">${escapeHtml(sig.description)}</span> <span class="cv-value-num">(${formatSignalValue(sig.value)})</span>`
+            : formatSignalValue(sig.value);
+          return `
+            <tr>
+              <td class="cv-signal-name">${escapeHtml(sig.signal_name)}</td>
+              <td class="cv-physical-value">${valueDisplay}</td>
+              <td class="cv-unit-highlight">${sig.unit || '-'}</td>
+            </tr>
+          `;
+        }).join('');
       }
     }
 

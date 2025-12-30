@@ -94,8 +94,16 @@ export function exportDbcToString(dbc: import('./types').DbcDto): string {
   lines.push('NS_ :');
   lines.push('');
 
-  // BS_ (bit timing) - empty
-  lines.push('BS_:');
+  // BS_ (bit timing)
+  if (dbc.bit_timing && dbc.bit_timing.baudrate > 0) {
+    if (dbc.bit_timing.btr1 > 0 || dbc.bit_timing.btr2 > 0) {
+      lines.push(`BS_: ${dbc.bit_timing.baudrate} : ${dbc.bit_timing.btr1},${dbc.bit_timing.btr2}`);
+    } else {
+      lines.push(`BS_: ${dbc.bit_timing.baudrate}`);
+    }
+  } else {
+    lines.push('BS_:');
+  }
   lines.push('');
 
   // BU_ (nodes)
@@ -144,13 +152,13 @@ export function exportDbcToString(dbc: import('./types').DbcDto): string {
   // CM_ (comments)
   // Database comment
   if (dbc.comment) {
-    lines.push(`CM_ "${escapeDbcString(dbc.comment)}";`);
+    lines.push(`CM_ "${escapeDbcString(dbc.comment)}" ;`);
   }
 
   // Node comments
   for (const node of dbc.nodes) {
     if (node.comment) {
-      lines.push(`CM_ BU_ ${node.name} "${escapeDbcString(node.comment)}";`);
+      lines.push(`CM_ BU_ ${node.name} "${escapeDbcString(node.comment)}" ;`);
     }
   }
 
@@ -158,19 +166,111 @@ export function exportDbcToString(dbc: import('./types').DbcDto): string {
   for (const msg of dbc.messages) {
     const msgId = msg.is_extended ? (msg.id | 0x80000000) : msg.id;
     if (msg.comment) {
-      lines.push(`CM_ BO_ ${msgId} "${escapeDbcString(msg.comment)}";`);
+      lines.push(`CM_ BO_ ${msgId} "${escapeDbcString(msg.comment)}" ;`);
     }
     for (const sig of msg.signals) {
       if (sig.comment) {
-        lines.push(`CM_ SG_ ${msgId} ${sig.name} "${escapeDbcString(sig.comment)}";`);
+        lines.push(`CM_ SG_ ${msgId} ${sig.name} "${escapeDbcString(sig.comment)}" ;`);
       }
     }
+  }
+
+  // BA_DEF_ (attribute definitions)
+  for (const def of dbc.attribute_definitions) {
+    const objectType = getAttributeObjectTypeKeyword(def.object_type);
+    const valueType = getAttributeValueTypeString(def.value_type);
+    lines.push(`BA_DEF_ ${objectType}"${def.name}" ${valueType} ;`);
+  }
+
+  // BA_DEF_DEF_ (attribute defaults)
+  for (const def of dbc.attribute_defaults) {
+    const valueStr = typeof def.value === 'string' ? `"${escapeDbcString(def.value)}"` : String(def.value);
+    lines.push(`BA_DEF_DEF_ "${def.name}" ${valueStr} ;`);
+  }
+
+  // BA_ (attribute values)
+  for (const val of dbc.attribute_values) {
+    const targetStr = getAttributeTargetString(val.target);
+    const valueStr = typeof val.value === 'string' ? `"${escapeDbcString(val.value)}"` : String(val.value);
+    lines.push(`BA_ "${val.name}" ${targetStr}${valueStr} ;`);
+  }
+
+  // VAL_ (value descriptions)
+  for (const vd of dbc.value_descriptions) {
+    // Skip empty value descriptions (no entries)
+    if (vd.descriptions.length === 0) continue;
+
+    const msgId = vd.message_id;
+    const entries = vd.descriptions
+      .map(d => `${d.value} "${escapeDbcString(d.description)}"`)
+      .join(' ');
+    lines.push(`VAL_ ${msgId} ${vd.signal_name} ${entries} ;`);
+  }
+
+  // SG_MUL_VAL_ (extended multiplexing)
+  for (const em of dbc.extended_multiplexing) {
+    const ranges = em.ranges.map(r => `${r[0]}-${r[1]}`).join(', ');
+    lines.push(`SG_MUL_VAL_ ${em.message_id} ${em.signal_name} ${em.multiplexer_signal} ${ranges} ;`);
   }
 
   // End with empty line
   lines.push('');
 
   return lines.join('\n');
+}
+
+/**
+ * Get the DBC keyword for an attribute object type.
+ */
+function getAttributeObjectTypeKeyword(objectType: string): string {
+  switch (objectType) {
+    case 'node':
+      return 'BU_ ';
+    case 'message':
+      return 'BO_ ';
+    case 'signal':
+      return 'SG_ ';
+    default:
+      return ''; // network has no keyword
+  }
+}
+
+/**
+ * Format an attribute value type for DBC output.
+ */
+function getAttributeValueTypeString(valueType: import('./types').AttributeValueType): string {
+  switch (valueType.type) {
+    case 'int':
+      return `INT ${valueType.min} ${valueType.max}`;
+    case 'hex':
+      return `HEX ${valueType.min} ${valueType.max}`;
+    case 'float':
+      return `FLOAT ${valueType.min} ${valueType.max}`;
+    case 'string':
+      return 'STRING';
+    case 'enum':
+      return `ENUM ${valueType.values.map(v => `"${escapeDbcString(v)}"`).join(',')}`;
+    default:
+      return 'STRING';
+  }
+}
+
+/**
+ * Format an attribute target for DBC output.
+ */
+function getAttributeTargetString(target: import('./types').AttributeTarget): string {
+  switch (target.type) {
+    case 'network':
+      return '';
+    case 'node':
+      return `BU_ ${target.node_name} `;
+    case 'message':
+      return `BO_ ${target.message_id} `;
+    case 'signal':
+      return `SG_ ${target.message_id} ${target.signal_name} `;
+    default:
+      return '';
+  }
 }
 
 /**

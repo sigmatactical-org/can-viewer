@@ -53,6 +53,10 @@ export class MockApi implements CanViewerApi {
     return this.dbcPath;
   }
 
+  async getDbcSpecification(): Promise<string> {
+    return '# DBC File Format Specification\n\n(Mock specification content)';
+  }
+
   async decodeFrames(frames: CanFrame[]): Promise<DecodeResponse> {
     if (!this.dbcInfo) return { signals: [], errors: [] };
 
@@ -245,6 +249,7 @@ export function createMockFdFrames(count: number): CanFrame[] {
 /** Create mock DBC info for testing */
 export function createMockDbcInfo(): DbcInfo {
   return {
+    nodes: [{ name: 'ECU' }, { name: 'ABS' }],
     messages: [
       {
         id: 0x100,
@@ -306,6 +311,11 @@ export function createMockDbcInfo(): DbcInfo {
         signals: [],
       },
     ],
+    value_descriptions: [],
+    attribute_definitions: [],
+    attribute_defaults: [],
+    attribute_values: [],
+    extended_multiplexing: [],
   };
 }
 

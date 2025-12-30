@@ -23,16 +23,18 @@ CAN Viewer is a Tauri desktop application for viewing and analyzing CAN bus data
 frontend/
 ├── lib/
 │   ├── can-viewer.ts              # Shell component (thin orchestrator)
+│   ├── dbc-mapping.ts             # DBC type mapping (backend → editor)
 │   ├── events.ts                  # Event bus (mitt)
 │   ├── store.ts                   # Reactive stores (app, live)
 │   ├── types.ts                   # Shared TypeScript types
 │   ├── renderers.ts               # Table cell renderers
 │   ├── config.ts                  # Configuration
 │   ├── api/                       # Tauri API abstraction
-│   │   └── tauri-api.ts
+│   │   └── tauri-api.ts           # Tauri command wrappers + event listeners
 │   ├── utils/                     # Shared utilities
 │   │   ├── formatters.ts          # Value formatting
 │   │   ├── dlc-detection.ts       # DLC detection logic
+│   │   ├── html.ts                # HTML escaping (XSS prevention)
 │   │   └── helpers.ts             # General helpers
 │   └── components/
 │       ├── toolbars/              # Dedicated toolbar components
@@ -54,23 +56,66 @@ frontend/
 ├── styles/
 │   └── can-viewer.css             # Global styles
 └── main.ts                        # Entry point
+
+src/
+├── main.rs                        # Tauri entry point
+├── lib.rs                         # Library exports
+├── commands/                      # Tauri commands (IPC handlers)
+│   ├── dbc.rs                     # DBC load/save/decode
+│   ├── mdf4.rs                    # MDF4 load/export
+│   └── capture.rs                 # Live capture start/stop
+├── state.rs                       # Shared application state
+├── config.rs                      # Configuration persistence
+└── render/                        # Server-side HTML rendering
+    └── live.rs                    # Live capture HTML generation
 ```
+
+## Data Flow
+
+### Rust Backend to TypeScript Frontend
+
+```
+┌─────────────────┐     Tauri Events      ┌─────────────────┐
+│   Rust Backend  │ ──────────────────────> │  tauri-api.ts   │
+│                 │   (can-frame, etc.)    │   (Gateway)     │
+└─────────────────┘                        └────────┬────────┘
+                                                    │
+                                                    │ emit to mitt
+                                                    ▼
+                                           ┌─────────────────┐
+                                           │   events.ts     │
+                                           │   (Event Bus)   │
+                                           └────────┬────────┘
+                                                    │
+                              ┌─────────────────────┼─────────────────────┐
+                              │                     │                     │
+                              ▼                     ▼                     ▼
+                       ┌───────────┐         ┌───────────┐         ┌───────────┐
+                       │ Component │         │ Component │         │  Toolbar  │
+                       │     A     │         │     B     │         │     C     │
+                       └───────────┘         └───────────┘         └───────────┘
+```
+
+**Key points:**
+- `tauri-api.ts` wraps Tauri's `listen()` and `invoke()` functions
+- Backend events (like `can-frame`) are converted to mitt events
+- Components subscribe to the mitt event bus, not Tauri directly
+- This decouples components from Tauri specifics
 
 ## Communication Patterns
 
-### Event Bus (Low-Frequency)
+### Event Bus (mitt)
 
-Used for infrequent cross-component communication where multiple listeners may react.
+Used for cross-component communication. Events are typed and infrequent.
 
 ```typescript
 // events.ts
-import mitt from 'mitt';
-
 export type AppEvents = {
-  'dbc:changed': DbcChangedEvent;           // DBC content changes (load, clear, update)
-  'dbc:state-change': DbcStateChangeEvent;  // Editor state (dirty, editing)
-  'mdf4:changed': Mdf4ChangedEvent;         // MDF4 content changes (load, clear, capture-stopped)
+  'dbc:changed': DbcChangedEvent;           // DBC loaded/cleared/updated
+  'dbc:state-change': DbcStateChangeEvent;  // Editor dirty/editing state
+  'mdf4:changed': Mdf4ChangedEvent;         // MDF4 loaded/cleared
   'frame:selected': FrameSelectedEvent;     // Frame selected in table
+  'frame:received': CanFrame;               // Live frame from backend
   'capture:started': CaptureStartedEvent;
   'capture:stopped': CaptureStoppedEvent;
   'live:interfaces-loaded': LiveInterfacesLoadedEvent;
@@ -85,8 +130,8 @@ export const events = mitt<AppEvents>();
 // Emit
 emitDbcChanged({ action: 'loaded', dbcInfo, filename });
 
-// Subscribe
-events.on('dbc:changed', (e) => this.onDbcChanged(e));
+// Subscribe (in connectedCallback)
+events.on('dbc:changed', this.handleDbcChanged);
 
 // Unsubscribe (in disconnectedCallback)
 events.off('dbc:changed', this.handleDbcChanged);
@@ -97,14 +142,12 @@ events.off('dbc:changed', this.handleDbcChanged);
 Two stores separate infrequent state from high-frequency updates:
 
 ```typescript
-// store.ts
-
 // App state - file paths and loaded data (infrequent updates)
 export const appStore = createStore<AppState>({
   dbcFile: null,
   mdf4File: null,
   mdf4Frames: [],
-  mdf4Signals: [],  // Pre-decoded signals (if DBC loaded)
+  mdf4Signals: [],
 });
 
 // Live capture state - updates every 100ms during capture
@@ -118,10 +161,10 @@ export const liveStore = createStore<LiveState>({
 
 **Usage:**
 ```typescript
-// Update (from live-viewer during capture)
+// Update
 liveStore.set({ frameCount: this.frameBuffer.length });
 
-// Subscribe (in toolbar)
+// Subscribe
 this.unsubscribe = liveStore.subscribe((state) => this.updateUI(state));
 
 // Read current value
@@ -132,12 +175,11 @@ const state = liveStore.get();
 
 | Scenario | Use | Reason |
 |----------|-----|--------|
-| File loaded/cleared | Event + Store | Event notifies, appStore holds path + data |
+| File loaded/cleared | Event + Store | Event notifies, store holds data |
+| Frame received (live) | Event | High frequency, listeners process individually |
 | Capture started/stopped | Event | Infrequent state change |
-| Frame count during capture | Store | Updates every 100ms |
-| Interface list loaded | Event | One-time load |
-| DBC editor state | Event | UI-driven, infrequent |
-| Tab switch request | Event | Status components request tab change |
+| Frame count during capture | Store | UI polling every 100ms |
+| Tab switch request | Event | Status components request navigation |
 
 ## Component Responsibilities
 
@@ -183,24 +225,10 @@ Independent header indicators that show current file status:
 
 Status components:
 - Subscribe to `appStore` for file paths
-- Subscribe to `liveStore` for capture state (mdf4-status only)
-- Subscribe to events for state changes (`dbc:state-change`)
+- Subscribe to `liveStore` for capture state
+- Subscribe to events for state changes
 - Emit `tab:switch` event on click to request navigation
 - Are completely decoupled from the shell
-
-```typescript
-// Example: mdf4-status.ts - subscribes to both stores
-connectedCallback(): void {
-  this.render();
-  this.unsubscribeAppStore = appStore.subscribe(() => this.updateUI());
-  this.unsubscribeLiveStore = liveStore.subscribe(() => this.updateUI());
-}
-
-disconnectedCallback(): void {
-  this.unsubscribeAppStore?.();
-  this.unsubscribeLiveStore?.();
-}
-```
 
 ### Feature Components
 
@@ -212,9 +240,9 @@ Each feature component:
 - Has its own API interface for Tauri commands
 - Manages its internal state
 - Emits events for cross-component communication
-- Does NOT contain toolbar UI (moved to toolbar components)
+- Does NOT contain toolbar UI
 
-## Data Flow Example
+## Data Flow Examples
 
 ### Loading an MDF4 File
 
@@ -238,19 +266,24 @@ Each feature component:
    └─> Falls back to decodeFrames API if no pre-decoded signals
 ```
 
-### Live Capture Frame Updates
+### Live Capture Flow
 
 ```
-1. Frame received from Tauri backend
-   └─> live-viewer.handleFrame() buffers it
+1. User clicks Start in live-toolbar
+   └─> Shell calls liveViewer.startCapture(interface)
 
-2. Every 100ms, flushPendingFrames() processes batch
-   └─> Updates ring buffer and message monitor
-   └─> Calls liveStore.set({ frameCount, messageCount, ... })
+2. Rust backend starts SocketCAN capture
+   └─> Emits 'can-frame' Tauri events
 
-3. live-toolbar subscription fires
-   └─> Updates export button state based on frameCount
-   └─> Updates status display
+3. tauri-api.ts receives events
+   └─> Calls events.emit('frame:received', frame)
+
+4. live-viewer listens to 'frame:received'
+   └─> Buffers frames, updates ring buffer
+   └─> Every 100ms: liveStore.set({ frameCount, ... })
+
+5. live-toolbar subscription to liveStore fires
+   └─> Updates export button state, status display
 ```
 
 ## Styling
@@ -262,18 +295,27 @@ All components share a single CSS file (`can-viewer.css`) imported via Vite's `?
 
 Shadow DOM is used for encapsulation, with styles injected into each component's shadow root.
 
-## Tauri Integration
+## Security
 
-The shell creates API adapters for each component:
+HTML content is escaped using `escapeHtml()` from `utils/html.ts` to prevent XSS:
 
 ```typescript
-private createMdf4Api(): Mdf4InspectorApi {
-  return {
-    loadMdf4: (path) => this.api.loadMdf4(path),
-    decodeFrames: (frames) => this.api.decodeFrames(frames),
-    // ...
-  };
-}
+import { escapeHtml } from './utils/html';
+
+// Safe: user input is escaped
+element.innerHTML = `<div>${escapeHtml(userInput)}</div>`;
 ```
 
-This decouples components from Tauri specifics and enables testing.
+## Testing
+
+```bash
+# Frontend tests
+cd frontend && npm test
+
+# Rust tests
+cargo test
+
+# All tests (via pre-commit hook)
+./setup-git-hooks.sh  # Once
+git commit            # Runs all checks
+```

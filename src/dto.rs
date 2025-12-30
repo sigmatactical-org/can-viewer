@@ -5,6 +5,166 @@
 
 use serde::{Deserialize, Serialize};
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DBC DTOs
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Node (ECU) definition from DBC.
+#[derive(Debug, Clone, Serialize)]
+pub struct NodeInfo {
+    pub name: String,
+    pub comment: Option<String>,
+}
+
+/// Signal definition from DBC.
+#[derive(Debug, Clone, Serialize)]
+pub struct SignalInfo {
+    pub name: String,
+    pub start_bit: u32,
+    pub length: u32,
+    pub byte_order: String,
+    pub is_signed: bool,
+    pub factor: f64,
+    pub offset: f64,
+    pub min: f64,
+    pub max: f64,
+    pub unit: String,
+    pub receivers: Vec<String>,
+    pub is_multiplexer: bool,
+    pub multiplexer_value: Option<u64>,
+    /// Comment from CM_ SG_ entry
+    pub comment: Option<String>,
+}
+
+/// Message definition from DBC.
+#[derive(Debug, Clone, Serialize)]
+pub struct MessageInfo {
+    pub id: u32,
+    pub is_extended: bool,
+    pub name: String,
+    pub dlc: u8,
+    pub sender: String,
+    pub signals: Vec<SignalInfo>,
+    /// Comment from CM_ BO_ entry
+    pub comment: Option<String>,
+}
+
+/// Bit timing configuration (BS_ section).
+#[derive(Debug, Clone, Serialize)]
+pub struct BitTimingInfo {
+    pub baudrate: u32,
+    pub btr1: u32,
+    pub btr2: u32,
+}
+
+/// Single value description entry.
+#[derive(Debug, Clone, Serialize)]
+pub struct ValueDescriptionEntry {
+    pub value: i64,
+    pub description: String,
+}
+
+/// Value descriptions for a signal (VAL_).
+#[derive(Debug, Clone, Serialize)]
+pub struct SignalValueDescriptions {
+    pub message_id: u32,
+    pub signal_name: String,
+    pub descriptions: Vec<ValueDescriptionEntry>,
+}
+
+/// Attribute value type with constraints.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum AttributeValueType {
+    #[serde(rename = "int")]
+    Int { min: i64, max: i64 },
+    #[serde(rename = "hex")]
+    Hex { min: i64, max: i64 },
+    #[serde(rename = "float")]
+    Float { min: f64, max: f64 },
+    #[serde(rename = "string")]
+    String,
+    #[serde(rename = "enum")]
+    Enum { values: Vec<String> },
+}
+
+/// Attribute definition (BA_DEF_).
+#[derive(Debug, Clone, Serialize)]
+pub struct AttributeDefinitionInfo {
+    pub name: String,
+    pub object_type: String, // "network", "node", "message", "signal"
+    pub value_type: AttributeValueType,
+}
+
+/// Attribute default value (BA_DEF_DEF_).
+#[derive(Debug, Clone, Serialize)]
+pub struct AttributeDefaultInfo {
+    pub name: String,
+    pub value: AttributeValueInfo,
+}
+
+/// Attribute value (can be int, float, or string).
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+pub enum AttributeValueInfo {
+    Int(i64),
+    Float(f64),
+    String(String),
+}
+
+/// Attribute target specification.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum AttributeTargetInfo {
+    #[serde(rename = "network")]
+    Network,
+    #[serde(rename = "node")]
+    Node { node_name: String },
+    #[serde(rename = "message")]
+    Message { message_id: u32 },
+    #[serde(rename = "signal")]
+    Signal {
+        message_id: u32,
+        signal_name: String,
+    },
+}
+
+/// Attribute value assignment (BA_).
+#[derive(Debug, Clone, Serialize)]
+pub struct AttributeAssignmentInfo {
+    pub name: String,
+    pub target: AttributeTargetInfo,
+    pub value: AttributeValueInfo,
+}
+
+/// Extended multiplexing entry (SG_MUL_VAL_).
+#[derive(Debug, Clone, Serialize)]
+pub struct ExtendedMultiplexingInfo {
+    pub message_id: u32,
+    pub signal_name: String,
+    pub multiplexer_signal: String,
+    pub ranges: Vec<(u64, u64)>,
+}
+
+/// Full DBC structure for display/editing.
+#[derive(Debug, Clone, Serialize)]
+pub struct DbcInfo {
+    pub version: Option<String>,
+    pub bit_timing: Option<BitTimingInfo>,
+    pub comment: Option<String>,
+    pub nodes: Vec<NodeInfo>,
+    pub messages: Vec<MessageInfo>,
+    pub value_descriptions: Vec<SignalValueDescriptions>,
+    pub attribute_definitions: Vec<AttributeDefinitionInfo>,
+    pub attribute_defaults: Vec<AttributeDefaultInfo>,
+    pub attribute_values: Vec<AttributeAssignmentInfo>,
+    pub extended_multiplexing: Vec<ExtendedMultiplexingInfo>,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CAN Frame DTOs
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// Kernel-level CAN filter (BPF) for socket filtering.
 ///
 /// Filters are applied at the kernel level before frames reach userspace,

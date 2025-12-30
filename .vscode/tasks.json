@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-frontend",
+            "type": "npm",
+            "script": "build",
+            "path": "frontend",
+            "group": "build",
+            "problemMatcher": ["$tsc"],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            }
+        }
+    ]
+}

@@ -100,6 +100,10 @@ export interface SignalInfo {
   unit: string;
   /** Comment from CM_ SG_ entry */
   comment?: string;
+  /** True if this signal is a multiplexer */
+  is_multiplexer?: boolean;
+  /** Multiplexer value (for multiplexed signals) */
+  multiplexer_value?: number | null;
 }
 
 /** Message definition from DBC */
@@ -113,9 +117,93 @@ export interface MessageInfo {
   comment?: string;
 }
 
-/** Full DBC structure */
+/** Node info from DBC */
+export interface NodeInfo {
+  name: string;
+  comment?: string;
+}
+
+/** Value description entry */
+export interface ValueDescriptionEntry {
+  value: number;
+  description: string;
+}
+
+/** Value descriptions for a signal */
+export interface SignalValueDescriptions {
+  message_id: number;
+  signal_name: string;
+  descriptions: ValueDescriptionEntry[];
+}
+
+/** Attribute value type */
+export type AttributeValueType =
+  | { Int: { min: number; max: number } }
+  | { Hex: { min: number; max: number } }
+  | { Float: { min: number; max: number } }
+  | { String: null }
+  | { Enum: { values: string[] } };
+
+/** Attribute definition */
+export interface AttributeDefinitionInfo {
+  name: string;
+  object_type: string;
+  value_type: AttributeValueType;
+}
+
+/** Attribute default */
+export interface AttributeDefaultInfo {
+  name: string;
+  value: AttributeValueInfo;
+}
+
+/** Attribute value */
+export type AttributeValueInfo =
+  | { Int: number }
+  | { Float: number }
+  | { String: string };
+
+/** Attribute target */
+export type AttributeTargetInfo =
+  | { Network: null }
+  | { Node: { node_name: string } }
+  | { Message: { message_id: number } }
+  | { Signal: { message_id: number; signal_name: string } };
+
+/** Attribute assignment */
+export interface AttributeAssignmentInfo {
+  name: string;
+  target: AttributeTargetInfo;
+  value: AttributeValueInfo;
+}
+
+/** Extended multiplexing info */
+export interface ExtendedMultiplexingInfo {
+  message_id: number;
+  signal_name: string;
+  multiplexer_signal: string;
+  ranges: [number, number][];
+}
+
+/** Bit timing configuration (BS_ section) */
+export interface BitTimingInfo {
+  baudrate: number;
+  btr1: number;
+  btr2: number;
+}
+
+/** Full DBC structure from backend */
 export interface DbcInfo {
+  version?: string;
+  bit_timing?: BitTimingInfo;
+  comment?: string;
+  nodes: NodeInfo[];
   messages: MessageInfo[];
+  value_descriptions: SignalValueDescriptions[];
+  attribute_definitions: AttributeDefinitionInfo[];
+  attribute_defaults: AttributeDefaultInfo[];
+  attribute_values: AttributeAssignmentInfo[];
+  extended_multiplexing: ExtendedMultiplexingInfo[];
 }
 
 /** Initial files from CLI */
@@ -156,6 +244,8 @@ export interface CanViewerApi {
   getDbcInfo(): Promise<DbcInfo | null>;
   /** Get path to currently loaded DBC file */
   getDbcPath(): Promise<string | null>;
+  /** Get the DBC file format specification markdown */
+  getDbcSpecification(): Promise<string>;
   /** Decode frames using loaded DBC */
   decodeFrames(frames: CanFrame[]): Promise<DecodeResponse>;
   /** Load MDF4 file */

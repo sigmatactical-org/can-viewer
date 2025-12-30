@@ -56,6 +56,10 @@ export class TauriApi implements CanViewerApi {
     return await this.invoke('get_dbc_path') as string | null;
   }
 
+  async getDbcSpecification(): Promise<string> {
+    return await this.invoke('get_dbc_specification') as string;
+  }
+
   async decodeFrames(frames: CanFrame[]): Promise<DecodeResponse> {
     return await this.invoke('decode_frames', { frames }) as DecodeResponse;
   }

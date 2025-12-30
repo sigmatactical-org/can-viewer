@@ -11,14 +11,32 @@ import { escapeHtml } from '../../utils/html';
 import { events, emitDbcStateChange, emitDbcChanged, type Mdf4ChangedEvent } from '../../events';
 import { appStore } from '../../store';
 import styles from '../../../styles/can-viewer.css?inline';
+import { marked, type Tokens } from 'marked';
+
+// Configure marked to generate cleaner heading IDs
+// Strips leading numbers (e.g., "1. Introduction" -> "introduction")
+marked.use({
+  renderer: {
+    heading({ tokens, depth }: Tokens.Heading): string {
+      const text = this.parser.parseInline(tokens);
+      // Remove leading numbers like "1. " or "10. " from heading text for ID
+      const idText = text.replace(/^\d+\.\s*/, '').toLowerCase().replace(/[^\w]+/g, '-').replace(/(^-|-$)/g, '');
+      return `<h${depth} id="${idText}">${text}</h${depth}>\n`;
+    }
+  }
+});
 import './signals-table';
 import './signal-editor';
 import './messages-list';
 import './message-editor';
 import './nodes-editor';
+import './value-descriptions-editor';
+import './attributes-editor';
 import type { MessagesListElement } from './messages-list';
 import type { MessageEditorElement } from './message-editor';
 import type { NodesEditorElement } from './nodes-editor';
+import type { ValueDescriptionsEditorElement } from './value-descriptions-editor';
+import type { AttributesEditorElement } from './attributes-editor';
 
 export interface DbcEditorApi {
   loadDbc(path: string): Promise<DbcDto>;
@@ -30,6 +48,7 @@ export interface DbcEditorApi {
   isDirty(): Promise<boolean>;
   openFileDialog(): Promise<string | null>;
   saveFileDialog(defaultPath?: string): Promise<string | null>;
+  getDbcSpecification?(): Promise<string>;
 }
 
 export class DbcEditorComponent extends HTMLElement {
@@ -40,7 +59,8 @@ export class DbcEditorComponent extends HTMLElement {
   private selectedMessageId: number | null = null;
   private selectedMessageExtended = false;
   private isAddingMessage = false;
-  private activeTab: 'nodes' | 'messages' | 'preview' | 'version' = 'messages';
+  private activeTab: 'nodes' | 'messages' | 'values' | 'attributes' | 'timing' | 'preview' | 'version' | 'reference' = 'messages';
+  private specificationContent: string | null = null;
   private isEditMode = false;
   private dbcBeforeEdit: DbcDto | null = null;
   private frames: CanFrame[] = [];
@@ -162,11 +182,23 @@ export class DbcEditorComponent extends HTMLElement {
             <button class="cv-tab ${this.activeTab === 'nodes' ? 'active' : ''}" data-tab="nodes">
               Nodes <span class="cv-tab-badge">${this.dbc.nodes.length}</span>
             </button>
+            <button class="cv-tab ${this.activeTab === 'values' ? 'active' : ''}" data-tab="values">
+              Values <span class="cv-tab-badge">${this.dbc.value_descriptions.length}</span>
+            </button>
+            <button class="cv-tab ${this.activeTab === 'attributes' ? 'active' : ''}" data-tab="attributes">
+              Attributes <span class="cv-tab-badge">${this.dbc.attribute_definitions.length}</span>
+            </button>
+            <button class="cv-tab ${this.activeTab === 'timing' ? 'active' : ''}" data-tab="timing">
+              Bit Timing
+            </button>
             <button class="cv-tab ${this.activeTab === 'version' ? 'active' : ''}" data-tab="version">
               Version
             </button>
             <button class="cv-tab ${this.activeTab === 'preview' ? 'active' : ''}" data-tab="preview">
               Preview
+            </button>
+            <button class="cv-tab ${this.activeTab === 'reference' ? 'active' : ''}" data-tab="reference">
+              Reference
             </button>
           </div>
         </div>
@@ -174,8 +206,12 @@ export class DbcEditorComponent extends HTMLElement {
         <div class="cv-editor-main">
           ${this.activeTab === 'messages' ? this.renderMessagesTab() : ''}
           ${this.activeTab === 'nodes' ? this.renderNodesTab() : ''}
+          ${this.activeTab === 'values' ? this.renderValuesTab() : ''}
+          ${this.activeTab === 'attributes' ? this.renderAttributesTab() : ''}
+          ${this.activeTab === 'timing' ? this.renderTimingTab() : ''}
           ${this.activeTab === 'version' ? this.renderVersionTab() : ''}
           ${this.activeTab === 'preview' ? this.renderPreviewTab() : ''}
+          ${this.activeTab === 'reference' ? this.renderReferenceTab() : ''}
         </div>
       </div>
     `;
@@ -232,6 +268,83 @@ export class DbcEditorComponent extends HTMLElement {
     `;
   }
 
+  private renderValuesTab(): string {
+    return `
+      <div class="cv-grid" style="justify-content: center;">
+        <div class="cv-card" style="max-width: 800px;">
+          <div class="cv-card-header">
+            <span class="cv-card-title">Value Descriptions</span>
+          </div>
+          <div class="cv-card-body padded">
+            <p class="cv-help-text">
+              Define value-to-text mappings for signals. These appear as VAL_ statements and are used to decode enumerated signal values.
+            </p>
+            <cv-value-descriptions-editor></cv-value-descriptions-editor>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderAttributesTab(): string {
+    return `
+      <div class="cv-grid" style="justify-content: center;">
+        <div class="cv-card" style="max-width: 800px;">
+          <div class="cv-card-header">
+            <span class="cv-card-title">Attributes</span>
+          </div>
+          <div class="cv-card-body padded">
+            <p class="cv-help-text">
+              Define and assign attributes to DBC objects. Attributes provide metadata like cycle times, send types, and custom properties.
+            </p>
+            <cv-attributes-editor></cv-attributes-editor>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderTimingTab(): string {
+    const bt = this.dbc.bit_timing;
+    return `
+      <div class="cv-grid" style="justify-content: center;">
+        <div class="cv-card" style="max-width: 600px;">
+          <div class="cv-card-header">
+            <span class="cv-card-title">Bit Timing Configuration</span>
+          </div>
+          <div class="cv-card-body padded">
+            <p class="cv-help-text">
+              Configure the CAN bus bit timing parameters. These appear in the BS_ section of the DBC file.
+              Note: Most tools ignore this section and configure bit timing at the interface level.
+            </p>
+            <div class="cv-form-group">
+              <label class="cv-label">Baud Rate (bps)</label>
+              <select class="cv-select ${bt && bt.baudrate > 0 ? 'has-value' : ''}" style="max-width: 200px" id="bit-timing-baudrate">
+                <option value="0" ${!bt || bt.baudrate === 0 ? 'selected' : ''}>Not specified</option>
+                <option value="125000" ${bt?.baudrate === 125000 ? 'selected' : ''}>125 kbps</option>
+                <option value="250000" ${bt?.baudrate === 250000 ? 'selected' : ''}>250 kbps</option>
+                <option value="500000" ${bt?.baudrate === 500000 ? 'selected' : ''}>500 kbps</option>
+                <option value="1000000" ${bt?.baudrate === 1000000 ? 'selected' : ''}>1 Mbps</option>
+              </select>
+            </div>
+            <div class="cv-form-group">
+              <label class="cv-label">BTR1 (Bit Timing Register 1)</label>
+              <input type="number" class="cv-input" style="max-width: 100px" id="bit-timing-btr1"
+                     value="${bt?.btr1 ?? 0}" min="0" max="255"
+                     ${!bt || bt.baudrate === 0 ? 'disabled' : ''}>
+            </div>
+            <div class="cv-form-group">
+              <label class="cv-label">BTR2 (Bit Timing Register 2)</label>
+              <input type="number" class="cv-input" style="max-width: 100px" id="bit-timing-btr2"
+                     value="${bt?.btr2 ?? 0}" min="0" max="255"
+                     ${!bt || bt.baudrate === 0 ? 'disabled' : ''}>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   private renderVersionTab(): string {
     return `
       <div class="cv-grid" style="justify-content: center;">
@@ -241,13 +354,13 @@ export class DbcEditorComponent extends HTMLElement {
           </div>
           <div class="cv-card-body padded">
             <p class="cv-help-text">
-              Set the version string for this DBC file. This appears in the VERSION statement at the top of the file.
+              Set the version string for this DBC file (e.g., major.minor.patch). This appears in the VERSION statement at the top of the file.
             </p>
             <div class="cv-form-group">
               <label class="cv-label">Version</label>
               <input type="text" class="cv-input" style="max-width: 200px" id="dbc-version"
                      value="${this.dbc.version || ''}"
-                     placeholder="e.g., 1.0">
+                     placeholder="e.g., 1.0.0">
             </div>
           </div>
         </div>
@@ -269,6 +382,54 @@ export class DbcEditorComponent extends HTMLElement {
         </div>
       </div>
     `;
+  }
+
+  private renderReferenceTab(): string {
+    if (this.specificationContent === null) {
+      // Load specification content asynchronously
+      this.loadSpecification();
+      return `
+        <div class="cv-grid" style="justify-content: center;">
+          <div class="cv-card" style="max-width: 900px;">
+            <div class="cv-card-header">
+              <span class="cv-card-title">DBC File Format Reference</span>
+            </div>
+            <div class="cv-card-body padded">
+              <p>Loading specification...</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const htmlContent = marked.parse(this.specificationContent) as string;
+    return `
+      <div class="cv-grid" style="justify-content: center;">
+        <div class="cv-card" style="max-width: 900px;">
+          <div class="cv-card-header">
+            <span class="cv-card-title">DBC File Format Reference</span>
+          </div>
+          <div class="cv-markdown-content">
+            ${htmlContent}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private async loadSpecification(): Promise<void> {
+    if (this.api?.getDbcSpecification) {
+      try {
+        this.specificationContent = await this.api.getDbcSpecification();
+        this.render();
+      } catch (e) {
+        this.specificationContent = `Failed to load specification: ${e}`;
+        this.render();
+      }
+    } else {
+      this.specificationContent = 'Specification not available (API method not implemented)';
+      this.render();
+    }
   }
 
   private setupEventListeners() {
@@ -347,6 +508,76 @@ export class DbcEditorComponent extends HTMLElement {
       await this.syncToBackend();
       this.emitStateChange();
     });
+
+    // Bit timing inputs
+    const baudrateSelect = this.shadowRoot.getElementById('bit-timing-baudrate') as HTMLSelectElement;
+    const btr1Input = this.shadowRoot.getElementById('bit-timing-btr1') as HTMLInputElement;
+    const btr2Input = this.shadowRoot.getElementById('bit-timing-btr2') as HTMLInputElement;
+
+    const updateBitTiming = async () => {
+      const baudrate = parseInt(baudrateSelect?.value || '0', 10);
+      if (baudrate === 0) {
+        this.dbc.bit_timing = null;
+      } else {
+        this.dbc.bit_timing = {
+          baudrate,
+          btr1: parseInt(btr1Input?.value || '0', 10),
+          btr2: parseInt(btr2Input?.value || '0', 10),
+        };
+      }
+      this.isDirty = true;
+      await this.syncToBackend();
+      this.emitStateChange();
+    };
+
+    baudrateSelect?.addEventListener('change', async () => {
+      const baudrate = parseInt(baudrateSelect.value, 10);
+      // Enable/disable BTR inputs based on baudrate selection
+      if (btr1Input) btr1Input.disabled = baudrate === 0;
+      if (btr2Input) btr2Input.disabled = baudrate === 0;
+      // Update styling based on value
+      baudrateSelect.classList.toggle('has-value', baudrate > 0);
+      await updateBitTiming();
+    });
+    btr1Input?.addEventListener('input', updateBitTiming);
+    btr2Input?.addEventListener('input', updateBitTiming);
+
+    // Value descriptions tab
+    const valuesEditor = this.shadowRoot.querySelector('cv-value-descriptions-editor');
+    valuesEditor?.addEventListener('value-descriptions-change', ((e: Event) => {
+      const customEvent = e as CustomEvent;
+      this.dbc.value_descriptions = customEvent.detail.valueDescriptions;
+      this.isDirty = true;
+      this.syncToBackend();
+      this.emitStateChange();
+    }) as EventListener);
+
+    // Attributes tab
+    const attributesEditor = this.shadowRoot.querySelector('cv-attributes-editor');
+    attributesEditor?.addEventListener('attributes-change', ((e: Event) => {
+      const customEvent = e as CustomEvent;
+      this.dbc.attribute_definitions = customEvent.detail.definitions;
+      this.dbc.attribute_defaults = customEvent.detail.defaults;
+      this.dbc.attribute_values = customEvent.detail.values;
+      this.isDirty = true;
+      this.syncToBackend();
+      this.emitStateChange();
+    }) as EventListener);
+
+    // Markdown anchor links (for Reference tab)
+    const markdownContent = this.shadowRoot.querySelector('.cv-markdown-content');
+    markdownContent?.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'A') {
+        const href = target.getAttribute('href');
+        if (href?.startsWith('#')) {
+          e.preventDefault();
+          const id = href.slice(1);
+          const heading = markdownContent.querySelector(`#${CSS.escape(id)}`);
+          heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    });
   }
 
   private updateChildComponents() {
@@ -376,6 +607,25 @@ export class DbcEditorComponent extends HTMLElement {
     const nodesEditor = this.shadowRoot.querySelector('cv-nodes-editor') as NodesEditorElement;
     if (nodesEditor) {
       nodesEditor.setNodes(this.dbc.nodes);
+    }
+
+    // Value descriptions editor
+    const valuesEditor = this.shadowRoot.querySelector('cv-value-descriptions-editor') as ValueDescriptionsEditorElement;
+    if (valuesEditor) {
+      valuesEditor.setValueDescriptions(this.dbc.value_descriptions);
+      valuesEditor.setMessages(this.dbc.messages);
+    }
+
+    // Attributes editor
+    const attributesEditor = this.shadowRoot.querySelector('cv-attributes-editor') as AttributesEditorElement;
+    if (attributesEditor) {
+      attributesEditor.setData({
+        definitions: this.dbc.attribute_definitions,
+        defaults: this.dbc.attribute_defaults,
+        values: this.dbc.attribute_values,
+      });
+      attributesEditor.setMessages(this.dbc.messages);
+      attributesEditor.setNodes(this.dbc.nodes);
     }
   }
 

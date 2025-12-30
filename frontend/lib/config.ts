@@ -1,4 +1,4 @@
-import type { CanViewerConfig } from './types';
+import type { CanViewerConfig, CanFrame, DbcInfo, MessageInfo } from './types';
 
 /** Default configuration for CAN Viewer */
 export const defaultConfig: Required<CanViewerConfig> = {
@@ -7,7 +7,7 @@ export const defaultConfig: Required<CanViewerConfig> = {
   showLiveTab: true,
   showMdf4Tab: true,
   showAboutTab: true,
-  initialTab: 'mdf4',
+  initialTab: 'dbc',
   autoScroll: true,
   maxFrames: 10000,
   maxSignals: 10000,
@@ -99,4 +99,55 @@ export function countActiveFilters(filters: Filters): number {
   if (filters.channel) count++;
   if (filters.matchStatus !== 'all') count++;
   return count;
+}
+
+/** Get message info from DBC by CAN ID */
+function getMessageInfo(dbcInfo: DbcInfo | null, canId: number): MessageInfo | null {
+  if (!dbcInfo?.messages) return null;
+  return dbcInfo.messages.find(m => m.id === canId) || null;
+}
+
+/** Filter frames based on filter state and optional DBC info */
+export function filterFrames(frames: CanFrame[], filters: Filters, dbcInfo: DbcInfo | null = null): CanFrame[] {
+  return frames.filter(frame => {
+    // Time range filter
+    if (filters.timeMin !== null && frame.timestamp < filters.timeMin) return false;
+    if (filters.timeMax !== null && frame.timestamp > filters.timeMax) return false;
+
+    // CAN ID filter
+    if (filters.canIds?.length && !filters.canIds.includes(frame.can_id)) return false;
+
+    // Channel filter
+    if (filters.channel) {
+      const ch = filters.channel.toLowerCase();
+      if (!frame.channel.toLowerCase().includes(ch)) return false;
+    }
+
+    // Data pattern filter
+    if (filters.dataPattern && !matchDataPattern(frame.data, filters.dataPattern)) return false;
+
+    // Get message info for DBC-related filters
+    const msgInfo = getMessageInfo(dbcInfo, frame.can_id);
+    const hasMatch = msgInfo !== null;
+
+    // Match status filter
+    if (filters.matchStatus === 'matched' && !hasMatch) return false;
+    if (filters.matchStatus === 'unmatched' && hasMatch) return false;
+
+    // Message name filter
+    if (filters.messages?.length) {
+      if (!hasMatch) return false;
+      const msgName = msgInfo.name.toLowerCase();
+      if (!filters.messages.some(m => msgName.includes(m))) return false;
+    }
+
+    // Signal name filter
+    if (filters.signals?.length) {
+      if (!hasMatch) return false;
+      const signalNames = msgInfo.signals.map(s => s.name.toLowerCase());
+      if (!filters.signals.some(s => signalNames.some(sn => sn.includes(s)))) return false;
+    }
+
+    return true;
+  });
 }

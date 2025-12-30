@@ -34,7 +34,8 @@ describe('renderers', () => {
     });
 
     it('should show "No DBC file loaded" when empty messages', () => {
-      const html = renderDbcMessagesHtml({ messages: [] }, null);
+      const emptyDbcInfo = { ...createMockDbcInfo(), messages: [] };
+      const html = renderDbcMessagesHtml(emptyDbcInfo, null);
       expect(html).toContain('No DBC file loaded');
     });
 

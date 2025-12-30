@@ -7,10 +7,12 @@
  * - Handles initial file loading from CLI args
  */
 
-import type { CanViewerApi, CanViewerConfig, MessageInfo, DbcInfo, CanViewerExtension } from './types';
+import type { CanViewerApi, CanViewerConfig, DbcInfo, CanViewerExtension } from './types';
 import { extractFilename } from './utils';
 import { events, emitDbcChanged, type TabSwitchEvent } from './events';
 import { appStore } from './store';
+import { defaultConfig } from './config';
+import { mapDbcInfoToDto, createEmptyDbcDto } from './dbc-mapping';
 import { getVersion } from '@tauri-apps/api/app';
 
 // Import toolbar components
@@ -27,19 +29,6 @@ import type { Mdf4InspectorElement, Mdf4InspectorApi } from './components/mdf4-i
 import type { LiveViewerElement, LiveViewerApi } from './components/live-viewer';
 import type { DbcEditorComponent, DbcEditorApi } from './components/dbc-editor';
 import { exportDbcToString } from './components/dbc-editor';
-
-/** Default configuration */
-const defaultConfig: Required<CanViewerConfig> = {
-  appName: 'CAN Viewer',
-  showDbcTab: true,
-  showLiveTab: true,
-  showMdf4Tab: true,
-  showAboutTab: true,
-  initialTab: 'dbc',
-  autoScroll: true,
-  maxFrames: 10000,
-  maxSignals: 10000,
-};
 
 /** localStorage key for persisting active tab */
 const STORAGE_KEY_TAB = 'can-viewer:active-tab';
@@ -373,31 +362,6 @@ export class CanViewerElement extends HTMLElement {
   private createDbcEditorApi(): DbcEditorApi {
     const api = this.api!;
 
-    const mapMessageInfo = (m: MessageInfo) => ({
-      id: m.id,
-      is_extended: false,
-      name: m.name,
-      dlc: m.dlc,
-      sender: m.sender || 'Vector__XXX',
-      signals: m.signals.map(s => ({
-        name: s.name,
-        start_bit: s.start_bit,
-        length: s.length,
-        byte_order: (s.byte_order === 'big_endian' ? 'big_endian' : 'little_endian') as 'big_endian' | 'little_endian',
-        is_unsigned: !s.is_signed,
-        factor: s.factor,
-        offset: s.offset,
-        min: s.min,
-        max: s.max,
-        unit: s.unit || null,
-        receivers: { type: 'none' as const },
-        is_multiplexer: false,
-        multiplexer_value: null,
-        comment: s.comment || null,
-      })),
-      comment: m.comment || null,
-    });
-
     return {
       loadDbc: async (path: string) => {
         await api.loadDbc(path);
@@ -407,7 +371,7 @@ export class CanViewerElement extends HTMLElement {
         this.state.dbcFilename = extractFilename(path);
         appStore.set({ dbcFile: path });
         this.emitDbcChange('loaded', info);
-        return { version: null, nodes: [], messages: info.messages.map(mapMessageInfo), comment: null };
+        return mapDbcInfoToDto(info);
       },
       saveDbcContent: async (path: string, content: string) => {
         await api.saveDbcContent(path, content);
@@ -422,13 +386,13 @@ export class CanViewerElement extends HTMLElement {
         this.state.dbcFilename = null;
         appStore.set({ dbcFile: null });
         this.emitDbcChange('new', null);
-        return { version: null, nodes: [], messages: [], comment: null };
+        return createEmptyDbcDto();
       },
       getDbc: async () => {
         try {
           const info = await api.getDbcInfo();
           if (!info) return null;
-          return { version: null, nodes: [], messages: info.messages.map(mapMessageInfo), comment: null };
+          return mapDbcInfoToDto(info);
         } catch {
           return null;
         }
@@ -444,6 +408,7 @@ export class CanViewerElement extends HTMLElement {
       isDirty: async () => false,
       openFileDialog: async () => api.openFileDialog([{ name: 'DBC Files', extensions: ['dbc'] }]),
       saveFileDialog: async () => api.saveFileDialog([{ name: 'DBC Files', extensions: ['dbc'] }], 'untitled.dbc'),
+      getDbcSpecification: async () => api.getDbcSpecification(),
     };
   }
 

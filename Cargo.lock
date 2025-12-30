@@ -668,9 +668,9 @@ dependencies = [
 
 [[package]]
 name = "dbc-rs"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0edc85984eda47035a82478c5c55866f32ccb2c2971763e103f9a8db49ada4f5"
+checksum = "5de5ce2d801006ce70c083934d43951f93bbabd1a946bc779ac12de9d8a8654f"
 dependencies = [
  "embedded-can",
 ]

@@ -216,7 +216,7 @@ export class SignalEditorElement extends HTMLElement {
         </div>
       </div>
 
-      <div class="cv-form-row-4">
+      <div class="cv-form-row">
         <div class="cv-form-group cv-form-group-sm">
           <label class="cv-label">Factor</label>
           <input type="number" class="cv-input" id="factor" value="${this.signal.factor}" step="any">
@@ -225,6 +225,9 @@ export class SignalEditorElement extends HTMLElement {
           <label class="cv-label">Offset</label>
           <input type="number" class="cv-input" id="offset" value="${this.signal.offset}" step="any">
         </div>
+      </div>
+
+      <div class="cv-form-row">
         <div class="cv-form-group cv-form-group-sm">
           <label class="cv-label">Min</label>
           <input type="number" class="cv-input" id="min" value="${this.signal.min}" step="any">

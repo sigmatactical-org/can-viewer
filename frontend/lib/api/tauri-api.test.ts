@@ -85,7 +85,13 @@ describe('TauriApi', () => {
 
     it('should call invoke for getDbcInfo', async () => {
       const mockDbcInfo: DbcInfo = {
+        nodes: [],
         messages: [{ id: 0x100, name: 'Test', dlc: 8, sender: '', signals: [] }],
+        value_descriptions: [],
+        attribute_definitions: [],
+        attribute_defaults: [],
+        attribute_values: [],
+        extended_multiplexing: [],
       };
       mockTauri.core.invoke.mockResolvedValue(mockDbcInfo);
 

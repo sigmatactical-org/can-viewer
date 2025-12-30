@@ -1,47 +1,16 @@
 //! DBC file loading and management commands.
 
 use crate::decode::{DecodeResult, decode_frame};
-use crate::dto::{CanFrameDto, DecodeResponse};
+use crate::dto::{
+    AttributeAssignmentInfo, AttributeDefaultInfo, AttributeDefinitionInfo, AttributeTargetInfo,
+    AttributeValueInfo, AttributeValueType, BitTimingInfo, CanFrameDto, DbcInfo, DecodeResponse,
+    ExtendedMultiplexingInfo, MessageInfo, NodeInfo, SignalInfo, SignalValueDescriptions,
+    ValueDescriptionEntry,
+};
 use crate::state::AppState;
 use dbc_rs::Dbc;
-use serde::Serialize;
 use std::sync::Arc;
 use tauri::State;
-
-/// Signal definition from DBC.
-#[derive(Debug, Clone, Serialize)]
-pub struct SignalInfo {
-    pub name: String,
-    pub start_bit: u32,
-    pub length: u32,
-    pub byte_order: String,
-    pub is_signed: bool,
-    pub factor: f64,
-    pub offset: f64,
-    pub min: f64,
-    pub max: f64,
-    pub unit: String,
-    /// Comment from CM_ SG_ entry
-    pub comment: Option<String>,
-}
-
-/// Message definition from DBC.
-#[derive(Debug, Clone, Serialize)]
-pub struct MessageInfo {
-    pub id: u32,
-    pub name: String,
-    pub dlc: u8,
-    pub sender: String,
-    pub signals: Vec<SignalInfo>,
-    /// Comment from CM_ BO_ entry
-    pub comment: Option<String>,
-}
-
-/// Full DBC structure for display.
-#[derive(Debug, Clone, Serialize)]
-pub struct DbcInfo {
-    pub messages: Vec<MessageInfo>,
-}
 
 /// Load and parse a DBC file.
 /// Saves the path to session config for persistence.
@@ -186,6 +155,17 @@ pub async fn get_dbc_info(state: State<'_, Arc<AppState>>) -> Result<Option<DbcI
         return Ok(None);
     };
 
+    // Extract nodes
+    let nodes: Vec<NodeInfo> = dbc
+        .nodes()
+        .iter_nodes()
+        .map(|node| NodeInfo {
+            name: node.name().to_string(),
+            comment: node.comment().map(|s| s.to_string()),
+        })
+        .collect();
+
+    // Extract messages with full signal info
     let messages: Vec<MessageInfo> = dbc
         .messages()
         .iter()
@@ -198,6 +178,8 @@ pub async fn get_dbc_info(state: State<'_, Arc<AppState>>) -> Result<Option<DbcI
                         dbc_rs::ByteOrder::BigEndian => "big_endian",
                         dbc_rs::ByteOrder::LittleEndian => "little_endian",
                     };
+                    let receivers: Vec<String> =
+                        sig.receivers().iter().map(|r| r.to_string()).collect();
                     SignalInfo {
                         name: sig.name().to_string(),
                         start_bit: sig.start_bit() as u32,
@@ -209,6 +191,9 @@ pub async fn get_dbc_info(state: State<'_, Arc<AppState>>) -> Result<Option<DbcI
                         min: sig.min(),
                         max: sig.max(),
                         unit: sig.unit().unwrap_or("").to_string(),
+                        receivers,
+                        is_multiplexer: sig.is_multiplexer_switch(),
+                        multiplexer_value: sig.multiplexer_switch_value(),
                         comment: sig.comment().map(|s| s.to_string()),
                     }
                 })
@@ -216,6 +201,7 @@ pub async fn get_dbc_info(state: State<'_, Arc<AppState>>) -> Result<Option<DbcI
 
             MessageInfo {
                 id: msg.id(),
+                is_extended: msg.is_extended(),
                 name: msg.name().to_string(),
                 dlc: msg.dlc(),
                 sender: msg.sender().to_string(),
@@ -225,5 +211,148 @@ pub async fn get_dbc_info(state: State<'_, Arc<AppState>>) -> Result<Option<DbcI
         })
         .collect();
 
-    Ok(Some(DbcInfo { messages }))
+    // Extract value descriptions
+    let mut value_descriptions: Vec<SignalValueDescriptions> = Vec::new();
+    for msg in dbc.messages().iter() {
+        for sig in msg.signals().iter() {
+            if let Some(val_descs) = dbc.value_descriptions_for_signal(msg.id(), sig.name()) {
+                let descriptions: Vec<ValueDescriptionEntry> = val_descs
+                    .iter()
+                    .map(|(val, desc)| ValueDescriptionEntry {
+                        value: val as i64,
+                        description: desc.to_string(),
+                    })
+                    .collect();
+                if !descriptions.is_empty() {
+                    value_descriptions.push(SignalValueDescriptions {
+                        message_id: msg.id(),
+                        signal_name: sig.name().to_string(),
+                        descriptions,
+                    });
+                }
+            }
+        }
+    }
+
+    // Extract attribute definitions
+    let attribute_definitions: Vec<AttributeDefinitionInfo> = dbc
+        .attribute_definitions()
+        .iter()
+        .map(|def| {
+            let object_type = match def.object_type() {
+                dbc_rs::AttributeObjectType::Network => "network",
+                dbc_rs::AttributeObjectType::Node => "node",
+                dbc_rs::AttributeObjectType::Message => "message",
+                dbc_rs::AttributeObjectType::Signal => "signal",
+            };
+            let value_type = match def.value_type() {
+                dbc_rs::AttributeValueType::Int { min, max } => AttributeValueType::Int {
+                    min: *min,
+                    max: *max,
+                },
+                dbc_rs::AttributeValueType::Hex { min, max } => AttributeValueType::Hex {
+                    min: *min,
+                    max: *max,
+                },
+                dbc_rs::AttributeValueType::Float { min, max } => AttributeValueType::Float {
+                    min: *min,
+                    max: *max,
+                },
+                dbc_rs::AttributeValueType::String => AttributeValueType::String,
+                dbc_rs::AttributeValueType::Enum { values } => AttributeValueType::Enum {
+                    values: values.iter().map(|v| v.to_string()).collect(),
+                },
+            };
+            AttributeDefinitionInfo {
+                name: def.name().to_string(),
+                object_type: object_type.to_string(),
+                value_type,
+            }
+        })
+        .collect();
+
+    // Extract attribute defaults
+    let attribute_defaults: Vec<AttributeDefaultInfo> = dbc
+        .attribute_defaults()
+        .iter()
+        .map(|(name, value)| AttributeDefaultInfo {
+            name: name.to_string(),
+            value: convert_attribute_value(value),
+        })
+        .collect();
+
+    // Extract attribute values
+    let attribute_values: Vec<AttributeAssignmentInfo> = dbc
+        .attribute_values()
+        .iter()
+        .map(|((name, target), value)| {
+            let target_info = match target {
+                dbc_rs::AttributeTarget::Network => AttributeTargetInfo::Network,
+                dbc_rs::AttributeTarget::Node(node_name) => AttributeTargetInfo::Node {
+                    node_name: node_name.to_string(),
+                },
+                dbc_rs::AttributeTarget::Message(msg_id) => AttributeTargetInfo::Message {
+                    message_id: *msg_id,
+                },
+                dbc_rs::AttributeTarget::Signal(msg_id, sig_name) => AttributeTargetInfo::Signal {
+                    message_id: *msg_id,
+                    signal_name: sig_name.to_string(),
+                },
+            };
+            AttributeAssignmentInfo {
+                name: name.to_string(),
+                target: target_info,
+                value: convert_attribute_value(value),
+            }
+        })
+        .collect();
+
+    // Extract extended multiplexing
+    let extended_multiplexing: Vec<ExtendedMultiplexingInfo> = dbc
+        .extended_multiplexing()
+        .iter()
+        .map(|em| ExtendedMultiplexingInfo {
+            message_id: em.message_id(),
+            signal_name: em.signal_name().to_string(),
+            multiplexer_signal: em.multiplexer_switch().to_string(),
+            ranges: em.value_ranges().to_vec(),
+        })
+        .collect();
+
+    // Extract bit timing
+    let bit_timing = dbc.bit_timing().and_then(|bt| {
+        bt.baudrate().map(|baudrate| BitTimingInfo {
+            baudrate,
+            btr1: bt.btr1().unwrap_or(0),
+            btr2: bt.btr2().unwrap_or(0),
+        })
+    });
+
+    Ok(Some(DbcInfo {
+        version: dbc.version().map(|v| v.to_string()),
+        bit_timing,
+        comment: dbc.comment().map(|s| s.to_string()),
+        nodes,
+        messages,
+        value_descriptions,
+        attribute_definitions,
+        attribute_defaults,
+        attribute_values,
+        extended_multiplexing,
+    }))
+}
+
+fn convert_attribute_value(value: &dbc_rs::AttributeValue) -> AttributeValueInfo {
+    match value {
+        dbc_rs::AttributeValue::Int(i) => AttributeValueInfo::Int(*i),
+        dbc_rs::AttributeValue::Float(f) => AttributeValueInfo::Float(*f),
+        dbc_rs::AttributeValue::String(s) => AttributeValueInfo::String(s.to_string()),
+    }
+}
+
+/// Get the DBC file format specification.
+/// This is the SPECIFICATIONS.md from the dbc-rs crate.
+#[tauri::command]
+pub async fn get_dbc_specification() -> Result<String, String> {
+    Ok(dbc_rs::SPECIFICATION.to_string())
 }

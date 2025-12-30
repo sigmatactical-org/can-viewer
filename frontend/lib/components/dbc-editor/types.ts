@@ -2,6 +2,27 @@
  * TypeScript interfaces for DBC Editor components.
  */
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Bit Timing (BS_)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Bit timing configuration for the CAN bus.
+ * Corresponds to the BS_ section in DBC files.
+ */
+export interface BitTimingDto {
+  /** Baud rate in bits per second (e.g., 500000 for 500 kbps) */
+  baudrate: number;
+  /** Bit timing register 1 (hardware-specific, optional) */
+  btr1: number;
+  /** Bit timing register 2 (hardware-specific, optional) */
+  btr2: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Nodes
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * A node (ECU) definition with optional comment.
  */
@@ -52,16 +73,126 @@ export interface MessageDto {
   comment: string | null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Value Descriptions (VAL_)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A single value description entry (value -> text mapping).
+ */
+export interface ValueDescriptionEntry {
+  value: number;
+  description: string;
+}
+
+/**
+ * Value descriptions for a signal (VAL_ message_id signal_name values).
+ */
+export interface SignalValueDescriptions {
+  message_id: number;
+  signal_name: string;
+  descriptions: ValueDescriptionEntry[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Attributes (BA_DEF_, BA_DEF_DEF_, BA_)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Attribute object type - what the attribute applies to.
+ */
+export type AttributeObjectType = 'network' | 'node' | 'message' | 'signal';
+
+/**
+ * Attribute value type with constraints.
+ */
+export type AttributeValueType =
+  | { type: 'int'; min: number; max: number }
+  | { type: 'hex'; min: number; max: number }
+  | { type: 'float'; min: number; max: number }
+  | { type: 'string' }
+  | { type: 'enum'; values: string[] };
+
+/**
+ * Attribute definition (BA_DEF_).
+ */
+export interface AttributeDefinitionDto {
+  name: string;
+  object_type: AttributeObjectType;
+  value_type: AttributeValueType;
+}
+
+/**
+ * Attribute default value (BA_DEF_DEF_).
+ */
+export interface AttributeDefaultDto {
+  name: string;
+  value: string | number;
+}
+
+/**
+ * Attribute target - what object the attribute is assigned to.
+ */
+export type AttributeTarget =
+  | { type: 'network' }
+  | { type: 'node'; node_name: string }
+  | { type: 'message'; message_id: number }
+  | { type: 'signal'; message_id: number; signal_name: string };
+
+/**
+ * Attribute value assignment (BA_).
+ */
+export interface AttributeValueDto {
+  name: string;
+  target: AttributeTarget;
+  value: string | number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Extended Multiplexing (SG_MUL_VAL_)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Extended multiplexing entry.
+ */
+export interface ExtendedMultiplexingDto {
+  message_id: number;
+  signal_name: string;
+  multiplexer_signal: string;
+  /** Ranges where this signal is active: [[start, end], ...] */
+  ranges: [number, number][];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Complete DBC
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * A complete DBC file for editing.
  */
 export interface DbcDto {
   version: string | null;
+  /** Bit timing configuration (BS_), null if not specified */
+  bit_timing: BitTimingDto | null;
   nodes: NodeDto[];
   messages: MessageDto[];
   /** Database comment from CM_ entry */
   comment: string | null;
+  /** Value descriptions (VAL_) */
+  value_descriptions: SignalValueDescriptions[];
+  /** Attribute definitions (BA_DEF_) */
+  attribute_definitions: AttributeDefinitionDto[];
+  /** Attribute defaults (BA_DEF_DEF_) */
+  attribute_defaults: AttributeDefaultDto[];
+  /** Attribute values (BA_) */
+  attribute_values: AttributeValueDto[];
+  /** Extended multiplexing (SG_MUL_VAL_) */
+  extended_multiplexing: ExtendedMultiplexingDto[];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Factory Functions
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Create a default signal.
@@ -107,8 +238,14 @@ export function createDefaultMessage(dlc = 8): MessageDto {
 export function createDefaultDbc(): DbcDto {
   return {
     version: null,
+    bit_timing: null,
     nodes: [],
     messages: [],
     comment: null,
+    value_descriptions: [],
+    attribute_definitions: [],
+    attribute_defaults: [],
+    attribute_values: [],
+    extended_multiplexing: [],
   };
 }

@@ -7,7 +7,7 @@ describe('config', () => {
       expect(defaultConfig.showDbcTab).toBe(true);
       expect(defaultConfig.showLiveTab).toBe(true);
       expect(defaultConfig.showMdf4Tab).toBe(true);
-      expect(defaultConfig.initialTab).toBe('mdf4');
+      expect(defaultConfig.initialTab).toBe('dbc');
       expect(defaultConfig.autoScroll).toBe(true);
       expect(defaultConfig.maxFrames).toBe(10000);
       expect(defaultConfig.maxSignals).toBe(10000);

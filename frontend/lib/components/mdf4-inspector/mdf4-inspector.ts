@@ -7,7 +7,7 @@
 
 import type { CanFrame, DbcInfo, DecodedSignal, FileFilter } from '../../types';
 import type { Filters } from '../../config';
-import { countActiveFilters } from '../../config';
+import { countActiveFilters, createEmptyFilters, filterFrames } from '../../config';
 import { events, emitMdf4Changed, emitFrameSelected, type DbcChangedEvent, type CaptureStoppedEvent } from '../../events';
 import { appStore } from '../../store';
 import styles from '../../../styles/can-viewer.css?inline';
@@ -43,16 +43,7 @@ function createInitialState(): Mdf4State {
   return {
     frames: [],
     filteredFrames: [],
-    filters: {
-      timeMin: null,
-      timeMax: null,
-      canIds: null,
-      messages: null,
-      signals: null,
-      dataPattern: null,
-      channel: null,
-      matchStatus: 'all',
-    },
+    filters: createEmptyFilters(),
     selectedFrameIndex: null,
     dbcInfo: null,
     currentFile: null,
@@ -242,8 +233,8 @@ export class Mdf4InspectorElement extends HTMLElement {
           <cv-frames-table class="cv-card" id="framesTable">
             <div class="cv-card-header">
               <span class="cv-card-title">Raw CAN Frames</span>
-              <span class="cv-filter-link" id="filterLink"></span>
             </div>
+            <div class="cv-filter-chips" id="filterChips"></div>
             <div class="cv-table-wrap">
               <table class="cv-table">
                 <thead>
@@ -344,8 +335,8 @@ export class Mdf4InspectorElement extends HTMLElement {
     this.signalsPanel = this.shadow.querySelector('cv-signals-panel');
     this.filtersPanel = this.shadow.querySelector('cv-filters-panel');
 
-    // Configure frames table with message name lookup
-    this.framesTable?.setMessageNameLookup(canId => this.getMessageName(canId));
+    // Configure frames table with message info lookup (name + comment for tooltip)
+    this.framesTable?.setMessageInfoLookup(canId => this.getMessageInfo(canId));
 
     // Pass API to signals panel for fallback decoding
     if (this.signalsPanel && this.api) {
@@ -376,8 +367,16 @@ export class Mdf4InspectorElement extends HTMLElement {
       const detail = (e as CustomEvent<{ frame: CanFrame; index: number }>).detail;
       this.state.selectedFrameIndex = detail.index;
       // Look up pre-decoded signals for this frame
+      // Match by timestamp AND message name (to handle multiple frames at same timestamp)
       const allSignals = appStore.get().mdf4Signals;
-      const frameSignals = allSignals.filter(s => s.timestamp === detail.frame.timestamp);
+      const frameCanId = detail.frame.can_id;
+      const dbcMessage = this.state.dbcInfo?.messages.find(m => m.id === frameCanId);
+      const messageName = dbcMessage?.name;
+
+      const frameSignals = allSignals.filter(s =>
+        s.timestamp === detail.frame.timestamp &&
+        (!messageName || s.message_name === messageName)
+      );
       // Emit on event bus - signals-panel will handle display
       emitFrameSelected({ frame: detail.frame, index: detail.index, source: 'mdf4-inspector', signals: frameSignals });
     });
@@ -389,12 +388,7 @@ export class Mdf4InspectorElement extends HTMLElement {
       this.applyFilters();
       this.renderFrames();
       this.signalsPanel?.clear();
-      this.updateFilterLink();
-    });
-
-    // Filter link click
-    this.shadow.querySelector('#filterLink')?.addEventListener('click', () => {
-      this.switchTab('filters');
+      this.updateFilterChips();
     });
   }
 
@@ -442,63 +436,7 @@ export class Mdf4InspectorElement extends HTMLElement {
   }
 
   private applyFilters(): void {
-    const f = this.state.filters;
-    let frames = this.state.frames;
-
-    // Time range filter
-    if (f.timeMin !== null) {
-      frames = frames.filter(fr => fr.timestamp >= f.timeMin!);
-    }
-    if (f.timeMax !== null) {
-      frames = frames.filter(fr => fr.timestamp <= f.timeMax!);
-    }
-
-    // CAN ID filter
-    if (f.canIds?.length) {
-      frames = frames.filter(fr => f.canIds!.includes(fr.can_id));
-    }
-
-    // Channel filter
-    if (f.channel) {
-      const ch = f.channel.toLowerCase();
-      frames = frames.filter(fr => fr.channel.toLowerCase().includes(ch));
-    }
-
-    // Data pattern filter
-    if (f.dataPattern) {
-      const pattern = f.dataPattern.toUpperCase().split(/\s+/);
-      frames = frames.filter(fr => {
-        if (pattern.length > fr.data.length) return false;
-        for (let i = 0; i < pattern.length; i++) {
-          const p = pattern[i];
-          if (p === '??' || p === 'XX') continue;
-          const expected = parseInt(p, 16);
-          if (isNaN(expected) || fr.data[i] !== expected) return false;
-        }
-        return true;
-      });
-    }
-
-    // Message name filter
-    if (f.messages?.length && this.state.dbcInfo) {
-      const msgNames = f.messages.map(m => m.toLowerCase());
-      const matchingIds = this.state.dbcInfo.messages
-        .filter(m => msgNames.some(n => m.name.toLowerCase().includes(n)))
-        .map(m => m.id);
-      frames = frames.filter(fr => matchingIds.includes(fr.can_id));
-    }
-
-    // Match status filter
-    if (f.matchStatus !== 'all' && this.state.dbcInfo) {
-      const dbcIds = new Set(this.state.dbcInfo.messages.map(m => m.id));
-      if (f.matchStatus === 'matched') {
-        frames = frames.filter(fr => dbcIds.has(fr.can_id));
-      } else {
-        frames = frames.filter(fr => !dbcIds.has(fr.can_id));
-      }
-    }
-
-    this.state.filteredFrames = frames;
+    this.state.filteredFrames = filterFrames(this.state.frames, this.state.filters, this.state.dbcInfo);
   }
 
   private renderFrames(): void {
@@ -508,10 +446,11 @@ export class Mdf4InspectorElement extends HTMLElement {
     this.updateFilterTabBadge();
   }
 
-  private getMessageName(canId: number): string {
-    if (!this.state.dbcInfo) return '-';
+  private getMessageInfo(canId: number): { name: string; comment?: string } {
+    if (!this.state.dbcInfo) return { name: '-' };
     const msg = this.state.dbcInfo.messages.find(m => m.id === canId);
-    return msg?.name || '-';
+    if (!msg) return { name: '-' };
+    return { name: msg.name, comment: msg.comment };
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -532,27 +471,66 @@ export class Mdf4InspectorElement extends HTMLElement {
     }
   }
 
-  private updateFilterLink(): void {
-    const link = this.shadow.querySelector('#filterLink') as HTMLElement;
-    if (!link) return;
+  private updateFilterChips(): void {
+    const container = this.shadow.querySelector('#filterChips');
+    if (!container) return;
 
     const f = this.state.filters;
-    const parts: string[] = [];
+    const chips: { label: string; key: string; value: string }[] = [];
 
-    if (f.timeMin !== null || f.timeMax !== null) parts.push('time');
-    if (f.canIds?.length) parts.push('ID');
-    if (f.channel) parts.push('channel');
-    if (f.dataPattern) parts.push('data');
-    if (f.messages?.length) parts.push('message');
-    if (f.signals?.length) parts.push('signal');
-    if (f.matchStatus !== 'all') parts.push(f.matchStatus);
+    if (f.timeMin !== null) chips.push({ label: `Time ≥ ${f.timeMin}`, key: 'timeMin', value: '' });
+    if (f.timeMax !== null) chips.push({ label: `Time ≤ ${f.timeMax}`, key: 'timeMax', value: '' });
+    if (f.canIds?.length) chips.push({ label: `ID: ${f.canIds.map(id => '0x' + id.toString(16).toUpperCase()).join(', ')}`, key: 'canIds', value: '' });
+    if (f.channel) chips.push({ label: `Ch: ${f.channel}`, key: 'channel', value: '' });
+    if (f.dataPattern) chips.push({ label: `Data: ${f.dataPattern}`, key: 'dataPattern', value: '' });
+    if (f.messages?.length) chips.push({ label: `Msg: ${f.messages.join(', ')}`, key: 'messages', value: '' });
+    if (f.signals?.length) chips.push({ label: `Sig: ${f.signals.join(', ')}`, key: 'signals', value: '' });
+    if (f.matchStatus !== 'all') chips.push({ label: f.matchStatus === 'matched' ? 'Matched only' : 'Unmatched only', key: 'matchStatus', value: 'all' });
 
-    if (parts.length === 0) {
-      link.textContent = '';
-      link.classList.remove('active');
-    } else {
-      link.textContent = `[${parts.join(', ')}]`;
-      link.classList.add('active');
+    if (chips.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = chips.map(c =>
+      `<span class="cv-filter-chip" data-key="${c.key}" data-value="${c.value}">${c.label}<button class="cv-filter-chip-x" title="Remove filter">&times;</button></span>`
+    ).join('');
+
+    // Bind click handlers for X buttons
+    container.querySelectorAll('.cv-filter-chip-x').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const chip = (e.target as HTMLElement).closest('.cv-filter-chip') as HTMLElement;
+        if (chip) this.clearFilter(chip.dataset.key!, chip.dataset.value!);
+      });
+    });
+  }
+
+  private clearFilter(key: string, defaultValue: string): void {
+    // Clear the specific filter input
+    const inputMap: Record<string, string> = {
+      timeMin: 'filterTimeMin',
+      timeMax: 'filterTimeMax',
+      canIds: 'filterCanId',
+      channel: 'filterChannel',
+      dataPattern: 'filterDataPattern',
+      messages: 'filterMessage',
+      signals: 'filterSignal',
+      matchStatus: 'filterMatchStatus',
+    };
+
+    const inputId = inputMap[key];
+    if (!inputId) return;
+
+    const input = this.filtersPanel?.querySelector(`#${inputId}`) as HTMLInputElement | HTMLSelectElement;
+    if (input) {
+      input.value = defaultValue;
+      input.classList.remove('filter-active');
+      // Trigger filter change
+      this.filtersPanel?.dispatchEvent(new CustomEvent('filter-change', {
+        detail: this.filtersPanel?.getFilters?.() ?? this.state.filters,
+        bubbles: true,
+      }));
     }
   }
 

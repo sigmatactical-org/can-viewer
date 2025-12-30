@@ -62,7 +62,6 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug Unit Tests",
-            "preLaunchTask": "build-frontend",
             "cargo": {
                 "args": [
                     "test",
@@ -79,27 +78,6 @@
             "env": {
                 "RUST_BACKTRACE": "1"
             }
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "CAN Frame Generator (vcan0)",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin",
-                    "can-frame-generator",
-                    "--manifest-path",
-                    "${workspaceFolder}/Cargo.toml"
-                ],
-                "filter": {
-                    "name": "can-frame-generator",
-                    "kind": "bin"
-                }
-            },
-            "args": ["-i", "vcan0", "-r", "0.5"],
-            "cwd": "${workspaceFolder}",
-            "terminal": "integrated"
         }
     ]
 }

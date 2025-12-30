@@ -22,6 +22,7 @@ pub async fn load_mdf4(
     let mut decoded_signals = Vec::new();
 
     // Use FastDbc for O(1) lookup and zero-allocation decoding
+    // FastDbc also provides access to value descriptions via .dbc()
     let fast_dbc_guard = state.fast_dbc.lock();
     let fast_dbc = fast_dbc_guard.as_ref();
 
@@ -88,16 +89,29 @@ pub async fn load_mdf4(
                                 let count = msg.decode_into(&frame.data, &mut decode_buffer);
                                 msg.decode_raw_into(&frame.data, &mut raw_buffer);
                                 let message_name = msg.name();
+                                let msg_id = msg.id();
 
                                 for (idx, signal) in msg.signals().iter().enumerate().take(count) {
+                                    let signal_name = signal.name();
+                                    let raw_value = raw_buffer[idx];
+
+                                    // Look up value description from DBC (VAL_ entries)
+                                    // Use u64::try_from since value descriptions use unsigned keys
+                                    let description =
+                                        u64::try_from(raw_value).ok().and_then(|rv| {
+                                            fast.dbc()
+                                                .value_descriptions_for_signal(msg_id, signal_name)
+                                                .and_then(|vd| vd.get(rv).map(|s| s.to_string()))
+                                        });
+
                                     decoded_signals.push(DecodedSignalDto {
                                         timestamp: frame.timestamp,
                                         message_name: message_name.to_string(),
-                                        signal_name: signal.name().to_string(),
+                                        signal_name: signal_name.to_string(),
                                         value: decode_buffer[idx],
-                                        raw_value: raw_buffer[idx],
+                                        raw_value,
                                         unit: signal.unit().unwrap_or("").to_string(),
-                                        description: signal.comment().map(|s| s.to_string()),
+                                        description,
                                     });
                                 }
                             }

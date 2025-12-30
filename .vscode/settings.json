@@ -1,0 +1,16 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/rene/Source/Yocto/Scarthgap/poky/bitbake/lib",
+        "/home/rene/Source/Yocto/Scarthgap/poky/meta/lib",
+        "${workspaceFolder}/sources/poky/bitbake/lib",
+        "${workspaceFolder}/sources/poky/meta/lib"
+    ],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/sources/poky/bitbake/lib",
+        "${workspaceFolder}/sources/poky/meta/lib"
+    ],
+    "files.associations": {
+        "*.conf": "bitbake",
+        "*.inc": "bitbake"
+    }
+}

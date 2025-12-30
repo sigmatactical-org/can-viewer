@@ -11,20 +11,52 @@ export class FiltersPanelElement extends HTMLElement {
   }
 
   private bindEvents(): void {
-    // Bind all inputs
+    // Bind all inputs - update on input and highlight active
     const inputs = this.querySelectorAll('.cv-input');
     inputs.forEach(input => {
-      input.addEventListener('input', () => this.emitFilterChange());
+      input.addEventListener('input', () => {
+        this.updateInputHighlight(input as HTMLInputElement);
+        this.emitFilterChange();
+      });
+      // Flash highlight on Enter to confirm filter is applied
+      input.addEventListener('keydown', (e) => {
+        if ((e as KeyboardEvent).key === 'Enter') {
+          this.flashConfirm(input as HTMLElement);
+        }
+      });
+      // Initialize highlight state
+      this.updateInputHighlight(input as HTMLInputElement);
     });
 
     // Bind select elements
     const selects = this.querySelectorAll('.cv-select');
     selects.forEach(select => {
-      select.addEventListener('change', () => this.emitFilterChange());
+      select.addEventListener('change', () => {
+        this.updateSelectHighlight(select as HTMLSelectElement);
+        this.emitFilterChange();
+      });
+      // Initialize highlight state
+      this.updateSelectHighlight(select as HTMLSelectElement);
     });
 
     const clearBtn = this.querySelector('#clearFiltersBtn');
     clearBtn?.addEventListener('click', () => this.clearFilters());
+  }
+
+  /** Highlight input if it has a value */
+  private updateInputHighlight(input: HTMLInputElement): void {
+    input.classList.toggle('filter-active', input.value.trim() !== '');
+  }
+
+  /** Highlight select if not default value */
+  private updateSelectHighlight(select: HTMLSelectElement): void {
+    select.classList.toggle('filter-active', select.value !== 'all');
+  }
+
+  /** Flash green to confirm filter applied */
+  private flashConfirm(element: HTMLElement): void {
+    element.classList.add('filter-confirm');
+    setTimeout(() => element.classList.remove('filter-confirm'), 300);
   }
 
   /** Get current filter values */
@@ -60,6 +92,8 @@ export class FiltersPanelElement extends HTMLElement {
     this.setInputValue('filterDataPattern', '');
     this.setInputValue('filterChannel', '');
     this.setSelectValue('filterMatchStatus', 'all');
+    // Clear all highlights
+    this.querySelectorAll('.filter-active').forEach(el => el.classList.remove('filter-active'));
     this.emitFilterChange();
   }
 
