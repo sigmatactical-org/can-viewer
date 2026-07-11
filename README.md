@@ -1,4 +1,9 @@
-# Sigma Tactical CAN Viewer
+# CAN Viewer
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="ui/assets/sigma-mark.svg">
+  <img src="ui/assets/sigma-mark.svg" alt="Sigma" width="40" height="40" />
+</picture>
 
 Native desktop application for viewing and analyzing CAN bus data from MDF4 files and live SocketCAN interfaces.
 

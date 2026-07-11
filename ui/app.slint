@@ -1,11 +1,12 @@
 import { SigmaTheme } from "theme.slint";
+import { AppTitle, SigmaMark } from "widgets/brand.slint";
 import { Mdf4Tab } from "tabs/mdf4_tab.slint";
 import { LiveTab } from "tabs/live_tab.slint";
 import { DbcTab } from "tabs/dbc_tab.slint";
 import { FrameRow, SignalRow, LiveMessageRow, LiveSignalRow, LiveFrameRow, LiveErrorRow, DbcMessageRow, DbcSignalRow, DbcNodeRow, DbcAttributeRow, DbcValueDescRow } from "widgets/common.slint";
 
 export component SigmaCanViewer inherits Window {
-    title: "Sigma Tactical CAN Viewer";
+    title: "CAN Viewer";
     preferred-width: 1280px;
     preferred-height: 800px;
     background: SigmaTheme.background;
@@ -97,12 +98,7 @@ export component SigmaCanViewer inherits Window {
                 padding-left: 12px;
                 padding-right: 12px;
                 spacing: 16px;
-                Text {
-                    text: "Sigma Tactical CAN Viewer";
-                    color: SigmaTheme.text;
-                    font-weight: 700;
-                    vertical-alignment: center;
-                }
+                AppTitle {}
                 Rectangle { width: 1px; height: 24px; background: SigmaTheme.border; }
                 HorizontalLayout {
                     spacing: 4px;
@@ -224,7 +220,11 @@ export component SigmaCanViewer inherits Window {
                 VerticalLayout {
                     padding: 24px;
                     spacing: 12px;
-                    Text { text: "Sigma Tactical CAN Viewer"; color: SigmaTheme.text; font-size: 20px; font-weight: 700; }
+                    HorizontalLayout {
+                        spacing: 12px;
+                        SigmaMark { width: 40px; height: 40px; }
+                        Text { text: "CAN Viewer"; color: SigmaTheme.text; font-size: 20px; font-weight: 700; vertical-alignment: center; }
+                    }
                     Text { text: "Version " + root.version-text; color: SigmaTheme.text-dim; }
                     Text { text: "Native Slint desktop application for CAN bus analysis."; color: SigmaTheme.text; }
                     Text { text: "• MDF4 log inspection and export"; color: SigmaTheme.text-dim; }

@@ -2,7 +2,7 @@
 
 ## Sigma Tactical Group
 
-Current maintenance of **Sigma Tactical CAN Viewer** (`can-viewer`).
+Current maintenance of **CAN Viewer** (`can-viewer`).
 
 - Repository: https://github.com/sigmatactical-org/can-viewer
 - Stack: Slint UI, [dbc-rs](https://github.com/sigmatactical-org/dbc-rs), [mdf4-rs](https://github.com/sigmatactical-org/mdf4-rs)

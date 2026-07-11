@@ -1,4 +1,4 @@
-//! Sigma Tactical CAN Viewer — native Slint desktop application.
+//! CAN Viewer — native Slint desktop application.
 
 use can_viewer::app;
 use can_viewer::{AppState, InitialFiles};
@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 /// MDF4, SocketCAN, and DBC analysis tool.
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Sigma Tactical CAN Viewer")]
+#[command(author, version, about = "CAN Viewer")]
 struct Args {
     /// DBC file to load on startup
     #[arg(short, long)]

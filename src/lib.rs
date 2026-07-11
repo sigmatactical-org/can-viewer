@@ -1,4 +1,4 @@
-//! Sigma Tactical CAN Viewer library.
+//! CAN Viewer library.
 //!
 //! Native Slint desktop application for MDF4 inspection, SocketCAN capture,
 //! and DBC editing.

@@ -1,0 +1,18 @@
+import { SigmaTheme } from "../theme.slint";
+
+export component SigmaMark inherits Image {
+    source: @image-url("../assets/sigma-mark.svg");
+    width: 28px;
+    height: 28px;
+}
+
+export component AppTitle inherits HorizontalLayout {
+    spacing: 8px;
+    SigmaMark {}
+    Text {
+        text: "CAN Viewer";
+        color: SigmaTheme.text;
+        font-weight: 700;
+        vertical-alignment: center;
+    }
+}

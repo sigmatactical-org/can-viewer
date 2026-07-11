@@ -1,8 +1,8 @@
-# Sigma Tactical CAN Viewer — Architecture
+# CAN Viewer — Architecture
 
 ## Overview
 
-Sigma Tactical CAN Viewer is a native Slint desktop application. Domain logic lives in Rust; the UI binds to Rust-owned models via Slint properties and callbacks. There is no WebView, JavaScript frontend, or Tauri IPC layer.
+CAN Viewer is a native Slint desktop application. Domain logic lives in Rust; the UI binds to Rust-owned models via Slint properties and callbacks. There is no WebView, JavaScript frontend, or Tauri IPC layer.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -38,7 +38,7 @@ can-viewer/
 ├── build.rs                 # slint_build::compile("ui/app.slint")
 ├── ui/
 │   ├── app.slint            # SigmaCanViewer root window
-│   ├── theme.slint          # Sigma Tactical palette
+│   ├── theme.slint          # Brand palette
 │   ├── tabs/                # MDF4, Live, DBC tab components
 │   └── widgets/             # Shared rows, toolbar, status chip
 ├── src/
