@@ -231,7 +231,7 @@ impl DbcController {
         }
         self.apply_edits_from_ui();
         let mut info = self.edit_state.lock();
-        if let Some(i) = usize::try_from(idx).ok() {
+        if let Ok(i) = usize::try_from(idx) {
             if i < info.messages.len() {
                 info.messages.remove(i);
             }
@@ -284,7 +284,7 @@ impl DbcController {
         self.apply_edits_from_ui();
         let mut info = self.edit_state.lock();
         if let Some(msg) = info.messages.get_mut(msg_idx as usize) {
-            if let Some(i) = usize::try_from(sig_idx).ok() {
+            if let Ok(i) = usize::try_from(sig_idx) {
                 if i < msg.signals.len() {
                     msg.signals.remove(i);
                 }
@@ -317,7 +317,7 @@ impl DbcController {
         }
         self.apply_edits_from_ui();
         let mut info = self.edit_state.lock();
-        if let Some(i) = usize::try_from(idx).ok() {
+        if let Ok(i) = usize::try_from(idx) {
             if i < info.nodes.len() {
                 info.nodes.remove(i);
             }
@@ -424,7 +424,7 @@ fn apply_message_edits(info: &mut DbcInfo, ui: &SigmaCanViewer, idx: i32) {
         return;
     }
     if let Some(msg) = info.messages.get_mut(idx as usize) {
-        if let Some(id) = parse_hex_id(&ui.get_dbc_edit_message_id().to_string()) {
+        if let Some(id) = parse_hex_id(ui.get_dbc_edit_message_id().as_ref()) {
             msg.id = id;
             msg.is_extended = id > 0x7FF;
         }

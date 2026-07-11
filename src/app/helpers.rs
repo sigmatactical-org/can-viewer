@@ -33,7 +33,7 @@ pub fn parse_hex_id(s: &str) -> Option<u32> {
 pub fn parse_can_ids(text: &str) -> Vec<u32> {
     text
         .split([',', ' ', ';'])
-        .filter_map(|part| parse_hex_id(part))
+        .filter_map(parse_hex_id)
         .collect()
 }
 
