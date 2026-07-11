@@ -4,7 +4,9 @@ use super::dbc::DbcController;
 use super::helpers::{set_status, vec_model};
 use super::mdf4::Mdf4Controller;
 use crate::config::SessionConfig;
-use crate::services::{download_dbc, fetch_dbc_catalog, save_dbc_content, DbcCatalogFile, UpdatesConfig};
+use crate::services::{
+    download_dbc, fetch_dbc_catalog, save_dbc_content, DbcCatalogFile, UpdatesConfig,
+};
 use crate::state::AppState;
 use crate::{DbcCatalogRow, SigmaCanViewer};
 use parking_lot::Mutex;
@@ -82,9 +84,7 @@ impl CatalogController {
     fn refresh_catalog(&self) {
         self.with_ui(|ui| {
             ui.set_dbc_catalog_busy(true);
-            ui.set_dbc_catalog_status(
-                format!("Fetching from {}…", self.updates.base_url).into(),
-            );
+            ui.set_dbc_catalog_status(format!("Fetching from {}…", self.updates.base_url).into());
         });
 
         match fetch_dbc_catalog(&self.updates) {
@@ -194,8 +194,7 @@ impl CatalogController {
 
 fn cache_path_for(filename: &str) -> Result<String, String> {
     let cache_dir = SessionConfig::dbc_cache_dir().ok_or("Could not determine cache directory")?;
-    std::fs::create_dir_all(&cache_dir)
-        .map_err(|e| format!("Failed to create DBC cache: {e}"))?;
+    std::fs::create_dir_all(&cache_dir).map_err(|e| format!("Failed to create DBC cache: {e}"))?;
     let path = cache_dir.join(filename);
     Ok(path.to_string_lossy().into_owned())
 }
