@@ -1,0 +1,43 @@
+[package]
+name = "sigma-racer-mechanic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Sigma Racer Mechanic — shop tool over SocketCAN (diagnosis, maintenance, OTA) plus CAN Viewer analysis"
+readme = "README.md"
+keywords = ["can", "mechanic", "sigma-racer", "diagnostics"]
+categories = ["visualization", "embedded"]
+
+[build-dependencies]
+slint-build = "=1.13.1"
+
+[dependencies]
+sigma-diagnostics = { path = "../sigma-diagnostics" }
+can-viewer = { path = "../can-viewer" }
+slint = { version = "=1.13.1", default-features = false, features = [
+    "renderer-femtovg",
+    "backend-winit",
+    "compat-1-2",
+] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+parking_lot = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+dirs = "6"
+rfd = "0.15"
+ureq = { workspace = true }
+env_logger = "0.11"
+
+[lib]
+name = "sigma_racer_mechanic"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sigma-racer-mechanic"
+path = "src/main.rs"

@@ -4,22 +4,20 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'ui/**'
-      - 'tests/**'
+      - 'can-viewer/**'
+      - 'sigma-diagnostics/**'
+      - 'sigma-racer-mechanic/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
-      - 'build.rs'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'ui/**'
-      - 'tests/**'
+      - 'can-viewer/**'
+      - 'sigma-diagnostics/**'
+      - 'sigma-racer-mechanic/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
-      - 'build.rs'
       - '.github/workflows/ci.yml'
 
 env:
@@ -42,7 +40,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libgl1-mesa-dev
 
-      - run: cargo test
+      - run: cargo test --workspace
 
   msrv:
     name: MSRV
@@ -61,7 +59,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libgl1-mesa-dev
 
-      - run: cargo test --lib --tests
+      - run: cargo test --workspace --lib --tests
 
   clippy:
     name: Clippy
@@ -80,7 +78,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libgl1-mesa-dev
 
-      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo clippy --workspace --all-targets -- -D warnings
 
   fmt:
     name: Format
@@ -110,4 +108,4 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libgl1-mesa-dev
 
-      - run: cargo build --release
+      - run: cargo build -p can-viewer -p sigma-racer-mechanic --release

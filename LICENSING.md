@@ -4,13 +4,9 @@
 
 The Sigma Tactical Group name, logos, marks, artwork, and visual identity
 (including assets under `ui/assets/`) are **proprietary**. They are **not**
-covered by the dual-licensing model below. See [BRANDING.md](BRANDING.md).
+covered by the software licenses below. See [BRANDING.md](BRANDING.md).
 
 ## Software
-
-diagnostics is available under a **dual-licensing** model:
-
-## Open Source License (Default)
 
 The software is licensed under either of:
 
@@ -29,36 +25,7 @@ This means you can use diagnostics in:
 - Include copyright notices
 - Include license files
 - State any significant changes
-- Third-party crate notices are listed in the in-app **About** tab and generated at build time in `target/*/build/diagnostics-*/out/THIRD_PARTY_NOTICES.txt`
-
-## Commercial License
-
-For proprietary or commercial applications where you need:
-- No requirement to disclose source code modifications
-- No requirement to distribute derivative works under open-source licenses
-- Simplified attribution requirements
-- Legal protection and support
-
-**Commercial licenses are available for purchase.**
-
-See [LICENSE-COMMERCIAL](LICENSE-COMMERCIAL) for the full commercial license terms.
-
-### When Do You Need a Commercial License?
-
-You need a commercial license if:
-- You want to keep modifications proprietary
-- You want to avoid open-source license obligations
-- You need legal indemnification
-- You require commercial support
-
-You **do NOT** need a commercial license if:
-- Your project is open-source
-- You're comfortable with MIT/Apache-2.0 terms
-- You're using it for personal/educational purposes
-
-### Obtaining a Commercial License
-
-For commercial licensing inquiries, pricing, and terms, please [create an **Issue** in GitHub](https://github.com/sigmatactical-org/diagnostics/issues).
+- Third-party crate notices are listed in the in-app **About** tab and generated at build time in `target/*/build/can-viewer-*/out/THIRD_PARTY_NOTICES.txt`
 
 ## License Compatibility
 
@@ -70,15 +37,15 @@ For commercial licensing inquiries, pricing, and terms, please [create an **Issu
 - Most permissive licenses
 
 ### May have conflicts with:
-- GPL (unless using commercial license)
-- AGPL (unless using commercial license)
+- GPL (check compatibility carefully)
+- AGPL (check compatibility carefully)
 - LGPL (check compatibility)
 
 ## Contributions
 
 By contributing to diagnostics, you agree that your contributions will be
-licensed under the same dual-licensing model (MIT OR Apache-2.0 for
-open-source, and available for commercial licensing).
+licensed under MIT OR Apache-2.0 (at the recipient's option), the same as
+the rest of the software.
 
 ## Questions?
 

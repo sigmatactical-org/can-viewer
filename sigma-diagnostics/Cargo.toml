@@ -1,0 +1,37 @@
+[package]
+name = "sigma-diagnostics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Reusable CAN/DBC/MDF4 diagnostics domain for Sigma Racer (decode, filter, capture, catalog)"
+readme = "README.md"
+keywords = ["can", "mdf4", "dbc", "automotive", "diagnostics"]
+categories = ["embedded", "parsing"]
+include = [
+    "src/**/*",
+    "data/**/*",
+    "Cargo.toml",
+    "README.md",
+]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+parking_lot = { workspace = true }
+ureq = { workspace = true }
+mdf4-rs = { workspace = true }
+dbc-rs = { workspace = true }
+embedded-can = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+socketcan = { workspace = true }
+
+[lib]
+name = "sigma_diagnostics"
+path = "src/lib.rs"

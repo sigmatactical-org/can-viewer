@@ -1,0 +1,62 @@
+[package]
+name = "can-viewer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+readme = "../README.md"
+description = "CAN Viewer — MDF4, SocketCAN, and DBC analysis (Slint UI)"
+keywords = ["can", "mdf4", "dbc", "automotive", "socketcan"]
+categories = ["visualization", "embedded"]
+include = [
+    "src/**/*",
+    "ui/**/*",
+    "Cargo.toml",
+    "build.rs",
+    "examples/*",
+    "../README.md",
+    "../CONTRIBUTORS.md",
+    "../LICENSE-*",
+    "../LICENSING.md",
+    "../ARCHITECTURE.md",
+]
+
+[build-dependencies]
+slint-build = "=1.13.1"
+serde_json = { workspace = true }
+
+[dependencies]
+sigma-diagnostics = { path = "../sigma-diagnostics" }
+slint = { version = "=1.13.1", default-features = false, features = [
+    "renderer-femtovg",
+    "backend-winit",
+    "compat-1-2",
+] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+parking_lot = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+dirs = "6"
+rfd = "0.15"
+env_logger = "0.11"
+dbc-rs = { workspace = true }
+
+[lib]
+name = "can_viewer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "can-viewer"
+path = "src/main.rs"
+
+[features]
+default = []
+
+[dev-dependencies]
+mdf4-rs = { workspace = true }
+dbc-rs = { workspace = true }

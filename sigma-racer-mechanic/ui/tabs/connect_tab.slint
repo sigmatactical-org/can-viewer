@@ -1,0 +1,106 @@
+import { ComboBox, LineEdit, CheckBox } from "std-widgets.slint";
+import { SigmaTheme } from "theme.slint";
+import { ToolbarButton, StatusChip } from "widgets/common.slint";
+
+export component ConnectTab inherits Rectangle {
+    callback refresh-interfaces();
+    callback connect-vehicle();
+    callback disconnect-vehicle();
+
+    in-out property <[string]> interfaces;
+    in-out property <int> selected-interface: 0;
+    in-out property <string> bitrate-text: "500000";
+    in-out property <bool> use-m7-dbc: true;
+    in-out property <bool> connected: false;
+    in-out property <string> status-label: "Disconnected";
+    in-out property <string> status-detail: "";
+
+    background: SigmaTheme.background;
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 10px;
+
+        Text {
+            text: "Vehicle connection (SocketCAN)";
+            color: SigmaTheme.text;
+            font-weight: 700;
+        }
+        Text {
+            text: "Connect a USB-CAN adapter to the bike diagnostic / OBD port. Configure the interface bitrate with ip link (Classic CAN 500 kbit/s is typical for shop ports).";
+            color: SigmaTheme.text-dim;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            ToolbarButton {
+                label: "Refresh";
+                clicked => { root.refresh-interfaces(); }
+            }
+            ToolbarButton {
+                label: root.connected ? "Disconnect" : "Connect";
+                selected: root.connected;
+                clicked => {
+                    if root.connected {
+                        root.disconnect-vehicle();
+                    } else {
+                        root.connect-vehicle();
+                    }
+                }
+            }
+            StatusChip {
+                label: "Link";
+                value: root.status-label;
+                value-color: root.connected ? SigmaTheme.accent-green : SigmaTheme.accent-amber;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 12px;
+            VerticalLayout {
+                spacing: 4px;
+                width: 220px;
+                Text { text: "Interface"; color: SigmaTheme.text-dim; font-size: 9px; }
+                if root.interfaces.length > 0: ComboBox {
+                    model: root.interfaces;
+                    current-index <=> root.selected-interface;
+                    enabled: !root.connected;
+                }
+                if root.interfaces.length == 0: Text {
+                    text: "No SocketCAN interfaces";
+                    color: SigmaTheme.accent-red;
+                    font-size: SigmaTheme.font-size-small;
+                }
+            }
+            VerticalLayout {
+                spacing: 4px;
+                width: 140px;
+                Text { text: "Bitrate (hint)"; color: SigmaTheme.text-dim; font-size: 9px; }
+                LineEdit {
+                    text <=> root.bitrate-text;
+                    enabled: !root.connected;
+                    height: 28px;
+                }
+            }
+            VerticalLayout {
+                spacing: 4px;
+                alignment: start;
+                Text { text: " "; color: transparent; font-size: 9px; }
+                CheckBox {
+                    checked <=> root.use-m7-dbc;
+                    enabled: !root.connected;
+                    text: "Load M7 draft DBC";
+                }
+            }
+        }
+
+        Text {
+            text: root.status-detail;
+            color: SigmaTheme.text-dim;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+    }
+}

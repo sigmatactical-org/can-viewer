@@ -1,0 +1,225 @@
+import { ListView, ScrollView } from "std-widgets.slint";
+import { SigmaTheme } from "../theme.slint";
+import { AppTitle } from "../widgets/brand.slint";
+import { DepRow, ToolbarButton } from "../widgets/common.slint";
+
+export component AboutTab inherits Rectangle {
+    in property <string> version-text;
+    in property <string> copyright-text;
+    in property <string> license-notice;
+    in property <string> credits-text;
+    in property <string> transitive-summary;
+    in property <[string]> notice-lines;
+    in property <[DepRow]> direct-deps;
+
+    private property <bool> show-notices: false;
+
+    background: SigmaTheme.background;
+
+    ScrollView {
+        VerticalLayout {
+            padding: 20px;
+            spacing: 14px;
+            width: 100%;
+
+            AppTitle {}
+
+            Text {
+                text: "Version " + root.version-text;
+                color: SigmaTheme.text-dim;
+            }
+
+            Text {
+                text: "Native desktop application for MDF4 log inspection, live SocketCAN capture (Linux), and DBC database editing.";
+                color: SigmaTheme.text;
+                wrap: word-wrap;
+            }
+
+            Text {
+                text: "Copyright";
+                color: SigmaTheme.text;
+                font-weight: 600;
+            }
+
+            Text {
+                text: root.copyright-text;
+                color: SigmaTheme.text-dim;
+                wrap: word-wrap;
+            }
+
+            Text {
+                text: "License";
+                color: SigmaTheme.text;
+                font-weight: 600;
+            }
+
+            Text {
+                text: root.license-notice;
+                color: SigmaTheme.text-dim;
+                wrap: word-wrap;
+                font-size: SigmaTheme.font-size-small;
+            }
+
+            Text {
+                text: "Credits";
+                color: SigmaTheme.text;
+                font-weight: 600;
+            }
+
+            Text {
+                text: root.credits-text;
+                color: SigmaTheme.text-dim;
+                wrap: word-wrap;
+                font-size: SigmaTheme.font-size-small;
+            }
+
+            Text {
+                text: "Direct dependencies (" + root.direct-deps.length + ")";
+                color: SigmaTheme.text;
+                font-weight: 600;
+            }
+
+            Rectangle {
+                background: SigmaTheme.surface;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: SigmaTheme.border;
+                // header + rows (capped); ListView scrolls if many
+                height: min(28px + root.direct-deps.length * SigmaTheme.row-height, 28px + 12 * SigmaTheme.row-height);
+                VerticalLayout {
+                    Rectangle {
+                        height: 28px;
+                        background: SigmaTheme.surface-raised;
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            spacing: 12px;
+                            Text {
+                                text: "Crate";
+                                width: 160px;
+                                color: SigmaTheme.text-dim;
+                                font-size: SigmaTheme.font-size-small;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: "Version";
+                                width: 90px;
+                                color: SigmaTheme.text-dim;
+                                font-size: SigmaTheme.font-size-small;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: "License";
+                                horizontal-stretch: 1;
+                                color: SigmaTheme.text-dim;
+                                font-size: SigmaTheme.font-size-small;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                    ListView {
+                        for dep[i] in root.direct-deps: Rectangle {
+                            height: SigmaTheme.row-height;
+                            background: mod(i, 2) == 0 ? transparent : SigmaTheme.surface-raised.transparentize(0.55);
+                            HorizontalLayout {
+                                padding-left: 10px;
+                                padding-right: 10px;
+                                spacing: 12px;
+                                Text {
+                                    text: dep.name;
+                                    width: 160px;
+                                    color: SigmaTheme.text;
+                                    font-size: SigmaTheme.font-size-small;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
+                                Text {
+                                    text: dep.version;
+                                    width: 90px;
+                                    color: SigmaTheme.text-dim;
+                                    font-size: SigmaTheme.font-size-small;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
+                                Text {
+                                    text: dep.license;
+                                    horizontal-stretch: 1;
+                                    color: SigmaTheme.accent;
+                                    font-size: SigmaTheme.font-size-small;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: "Third-party software";
+                color: SigmaTheme.text;
+                font-weight: 600;
+            }
+
+            Text {
+                text: root.transitive-summary;
+                color: SigmaTheme.text-dim;
+                wrap: word-wrap;
+                font-size: SigmaTheme.font-size-small;
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                ToolbarButton {
+                    label: root.show-notices ? "Hide full notices" : "Show full notices";
+                    selected: root.show-notices;
+                    clicked => { root.show-notices = !root.show-notices; }
+                }
+                Text {
+                    text: root.notice-lines.length + " lines";
+                    color: SigmaTheme.text-dim;
+                    font-size: SigmaTheme.font-size-small;
+                    vertical-alignment: center;
+                }
+            }
+
+            if root.show-notices: Rectangle {
+                background: SigmaTheme.surface;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: SigmaTheme.border;
+                height: 320px;
+                ListView {
+                    for line in root.notice-lines: Rectangle {
+                        height: 16px;
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            Text {
+                                text: line;
+                                color: SigmaTheme.text-dim;
+                                font-size: 10px;
+                                font-family: "monospace";
+                                vertical-alignment: center;
+                                overflow: elide;
+                                horizontal-stretch: 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: "https://github.com/sigmatactical-org/diagnostics";
+                color: SigmaTheme.accent;
+                font-size: SigmaTheme.font-size-small;
+            }
+
+            Rectangle { height: 12px; }
+        }
+    }
+}

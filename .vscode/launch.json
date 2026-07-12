@@ -2,30 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Tauri Dev",
-            "type": "node",
-            "request": "launch",
-            "runtimeExecutable": "npm",
-            "runtimeArgs": ["run", "tauri:dev"],
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"]
-        },
-        {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug Diagnostics",
-            "preLaunchTask": "build-frontend",
+            "name": "Debug can-viewer",
             "cargo": {
                 "args": [
                     "build",
-                    "--features",
-                    "devtools",
+                    "-p",
+                    "can-viewer",
                     "--manifest-path",
                     "${workspaceFolder}/Cargo.toml"
                 ],
                 "filter": {
-                    "name": "diagnostics",
+                    "name": "can-viewer",
                     "kind": "bin"
                 }
             },
@@ -37,19 +26,18 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug Diagnostics (Release)",
-            "preLaunchTask": "build-frontend",
+            "name": "Debug can-viewer (Release)",
             "cargo": {
                 "args": [
                     "build",
                     "--release",
-                    "--features",
-                    "devtools",
+                    "-p",
+                    "can-viewer",
                     "--manifest-path",
                     "${workspaceFolder}/Cargo.toml"
                 ],
                 "filter": {
-                    "name": "diagnostics",
+                    "name": "can-viewer",
                     "kind": "bin"
                 }
             },
@@ -66,13 +54,10 @@
                 "args": [
                     "test",
                     "--no-run",
+                    "--workspace",
                     "--manifest-path",
                     "${workspaceFolder}/Cargo.toml"
-                ],
-                "filter": {
-                    "name": "diagnostics",
-                    "kind": "bin"
-                }
+                ]
             },
             "cwd": "${workspaceFolder}",
             "env": {

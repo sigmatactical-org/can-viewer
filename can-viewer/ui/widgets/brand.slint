@@ -1,0 +1,64 @@
+import { SigmaTheme } from "../theme.slint";
+
+export component SigmaMark inherits Rectangle {
+    width: 22px;
+    height: 22px;
+
+    // Always off; once a minute, ease on then ease off.
+    property <float> eye-intensity: 0.0;
+
+    animate eye-intensity {
+        duration: 1200ms;
+        easing: ease-in-out;
+    }
+
+    // Every 60s: begin fade-in to full.
+    pulse-timer := Timer {
+        interval: 60s;
+        running: true;
+        triggered => {
+            root.eye-intensity = 1.0;
+            // Wait for fade-in (+ brief hold), then fade out.
+            // Must use running=true: restart() is a no-op if the timer never started.
+            fade-out-timer.running = false;
+            fade-out-timer.running = true;
+        }
+    }
+
+    // One-shot: after fade-in completes, ease back to off.
+    fade-out-timer := Timer {
+        interval: 1500ms;
+        running: false;
+        triggered => {
+            root.eye-intensity = 0.0;
+            self.running = false;
+        }
+    }
+
+    Image {
+        source: @image-url("../assets/sigma-mark-body.svg");
+        width: 100%;
+        height: 100%;
+    }
+
+    Image {
+        source: @image-url("../assets/sigma-mark-eye.svg");
+        width: 100%;
+        height: 100%;
+        opacity: root.eye-intensity;
+    }
+}
+
+export component AppTitle inherits HorizontalLayout {
+    in property <string> title: "Diagnostics";
+    spacing: 6px;
+    alignment: center;
+    SigmaMark {}
+    Text {
+        text: root.title;
+        color: SigmaTheme.text;
+        font-weight: 700;
+        font-size: 13px;
+        vertical-alignment: center;
+    }
+}

@@ -1,0 +1,44 @@
+import { SigmaTheme } from "theme.slint";
+import { ToolbarButton } from "widgets/common.slint";
+
+export component LogsTab inherits Rectangle {
+    callback request-ecu-log();
+    callback open-local-mdf4();
+
+    in property <string> status-text: "Import local MDF4 via Analysis → MDF4, or request an ECU export (stub).";
+
+    background: SigmaTheme.background;
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 10px;
+        Text {
+            text: "Logs";
+            color: SigmaTheme.text;
+            font-weight: 700;
+        }
+        Text {
+            text: "Bulk MDF4 pull from the bike is not available over CAN yet. Use local import for analysis; ECU request is a protocol stub.";
+            color: SigmaTheme.text-dim;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            ToolbarButton {
+                label: "Open local MDF4…";
+                clicked => { root.open-local-mdf4(); }
+            }
+            ToolbarButton {
+                label: "Request log from ECU";
+                clicked => { root.request-ecu-log(); }
+            }
+        }
+        Text {
+            text: root.status-text;
+            color: SigmaTheme.text-dim;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+    }
+}

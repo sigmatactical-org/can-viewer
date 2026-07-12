@@ -685,6 +685,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "can-viewer"
+version = "0.3.0"
+dependencies = [
+ "clap",
+ "dbc-rs 0.5.2",
+ "dirs",
+ "env_logger",
+ "log",
+ "mdf4-rs",
+ "parking_lot",
+ "rfd",
+ "serde",
+ "serde_json",
+ "sigma-diagnostics",
+ "slint",
+ "slint-build",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1155,28 +1175,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
-]
-
-[[package]]
-name = "diagnostics"
-version = "0.3.0"
-dependencies = [
- "clap",
- "dbc-rs 0.5.2",
- "dirs",
- "embedded-can",
- "env_logger",
- "log",
- "mdf4-rs",
- "parking_lot",
- "rfd",
- "serde",
- "serde_json",
- "slint",
- "slint-build",
- "socketcan",
- "thiserror 2.0.17",
- "ureq",
 ]
 
 [[package]]
@@ -4336,6 +4334,42 @@ name = "sigma-bounded"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "977e65031cbd5b33463cdb8313fb06a2fb0b548cd81743c18c2d3a639e98a0be"
+
+[[package]]
+name = "sigma-diagnostics"
+version = "0.3.0"
+dependencies = [
+ "dbc-rs 0.5.2",
+ "embedded-can",
+ "log",
+ "mdf4-rs",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "socketcan",
+ "thiserror 2.0.17",
+ "ureq",
+]
+
+[[package]]
+name = "sigma-racer-mechanic"
+version = "0.3.0"
+dependencies = [
+ "can-viewer",
+ "clap",
+ "dirs",
+ "env_logger",
+ "log",
+ "parking_lot",
+ "rfd",
+ "serde",
+ "serde_json",
+ "sigma-diagnostics",
+ "slint",
+ "slint-build",
+ "thiserror 2.0.17",
+ "ureq",
+]
 
 [[package]]
 name = "signal-hook-registry"

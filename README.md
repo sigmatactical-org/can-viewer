@@ -1,14 +1,17 @@
 # Diagnostics
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="ui/assets/sigma-mark.svg">
-  <img src="ui/assets/sigma-mark.svg" alt="Sigma" width="40" height="40" />
+  <source media="(prefers-color-scheme: dark)" srcset="can-viewer/ui/assets/sigma-mark.svg">
+  <img src="can-viewer/ui/assets/sigma-mark.svg" alt="Sigma" width="40" height="40" />
 </picture>
 
-Native desktop application for viewing and analyzing CAN bus data from MDF4 files and live SocketCAN interfaces.
+Cargo workspace for Sigma Racer diagnostics: reusable CAN/DBC/MDF4 domain library, CAN Viewer, and Sigma Racer Mechanic.
 
-[![Crates.io](https://img.shields.io/crates/v/diagnostics.svg)](https://crates.io/crates/diagnostics)
-[![License](https://img.shields.io/crates/l/diagnostics.svg)](LICENSE)
+| Crate | Role |
+| --- | --- |
+| [`sigma-diagnostics`](sigma-diagnostics/) | Shared domain (decode, filter, capture, DBC/MDF4, updates, vehicle session) |
+| [`can-viewer`](can-viewer/) | Slint desktop UI (MDF4, live SocketCAN, DBC editor) |
+| [`sigma-racer-mechanic`](sigma-racer-mechanic/) | Shop tool over SocketCAN + embedded analysis tabs |
 
 Maintained by [Sigma Tactical Group](https://github.com/sigmatactical-org). See [CONTRIBUTORS.md](CONTRIBUTORS.md) for lineage.
 
@@ -16,24 +19,20 @@ Maintained by [Sigma Tactical Group](https://github.com/sigmatactical-org). See 
 
 - **MDF4 inspection** — load, filter, decode, and export CAN log files
 - **DBC decoding** — decode frames with DBC databases via [dbc-rs](https://github.com/sigmatactical-org/dbc-rs)
-- **DBC catalog** — fetch Sigma Racer schemas from [sigma-updates](https://github.com/sigmatactical-org/updates) (`Catalog` button on MDF4 and DBC tabs)
+- **DBC catalog** — fetch Sigma Racer schemas from [sigma-updates](https://github.com/sigmatactical-org/updates) (`Catalog` button on the DBC tab)
 - **Live capture** — SocketCAN capture on Linux with ring-buffer display and MDF4 export
 - **DBC editor** — create and edit messages, signals, nodes, and header metadata
 - **Native UI** — Slint desktop UI (no WebView or Node.js toolchain)
-
-## Installation
-
-```bash
-cargo install diagnostics
-diagnostics
-```
+- **Reusable library** — `sigma-diagnostics` for other crates (e.g. cluster) without Slint
 
 ## From source
 
 ```bash
 git clone https://github.com/sigmatactical-org/diagnostics.git
 cd diagnostics
-cargo run
+cargo run -p can-viewer
+# or shop tool:
+cargo run -p sigma-racer-mechanic
 ```
 
 ### Linux build dependencies
@@ -50,7 +49,7 @@ sudo apt install -y libfontconfig1-dev libxkbcommon-dev libgl1-mesa-dev
 ## Command line options
 
 ```
-diagnostics [OPTIONS]
+can-viewer [OPTIONS]
 
 Options:
   -d, --dbc <PATH>    DBC file to load on startup

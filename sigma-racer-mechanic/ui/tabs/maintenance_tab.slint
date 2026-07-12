@@ -1,0 +1,52 @@
+import { SigmaTheme } from "theme.slint";
+import { ToolbarButton, StatusChip } from "widgets/common.slint";
+
+export component MaintenanceTab inherits Rectangle {
+    callback reset-service();
+    callback reset-oil();
+    callback clear-warning();
+
+    in property <bool> connected: false;
+    in property <string> status-text: "Protocol pending with Wingman firmware.";
+
+    background: SigmaTheme.background;
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 10px;
+        Text {
+            text: "Maintenance";
+            color: SigmaTheme.text;
+            font-weight: 700;
+        }
+        Text {
+            text: "Service resets require bike-side CAN/UDS routines. Actions below call the shared stub until Wingman defines PDUs.";
+            color: SigmaTheme.text-dim;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+        StatusChip {
+            label: "Status";
+            value: root.status-text;
+            value-color: SigmaTheme.accent-amber;
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            ToolbarButton {
+                label: "Reset service interval";
+                enabled: root.connected;
+                clicked => { root.reset-service(); }
+            }
+            ToolbarButton {
+                label: "Reset oil life";
+                enabled: root.connected;
+                clicked => { root.reset-oil(); }
+            }
+            ToolbarButton {
+                label: "Clear warning";
+                enabled: root.connected;
+                clicked => { root.clear-warning(); }
+            }
+        }
+    }
+}

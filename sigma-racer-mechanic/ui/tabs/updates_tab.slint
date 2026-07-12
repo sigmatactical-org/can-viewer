@@ -1,0 +1,69 @@
+import { SigmaTheme } from "theme.slint";
+import { ToolbarButton, StatusChip } from "widgets/common.slint";
+
+export component UpdatesTab inherits Rectangle {
+    callback check-updates();
+    callback download-bundle();
+
+    in property <string> channel: "dev";
+    in property <string> current-version: "0.0.0";
+    in property <string> available-version: "";
+    in property <string> notes: "";
+    in property <string> bundle-url: "";
+    in property <bool> update-available: false;
+    in property <bool> busy: false;
+    in property <string> status-text: "";
+
+    background: SigmaTheme.background;
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 10px;
+        Text {
+            text: "Software updates";
+            color: SigmaTheme.text;
+            font-weight: 700;
+        }
+        Text {
+            text: "Shop PC downloads the RAUC bundle from sigma-updates. Install on the bike remains on-device.";
+            color: SigmaTheme.text-dim;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            StatusChip { label: "Channel"; value: root.channel; }
+            StatusChip { label: "Current"; value: root.current-version; }
+            StatusChip {
+                label: "Available";
+                value: root.update-available ? root.available-version : "—";
+                value-color: root.update-available ? SigmaTheme.accent-green : SigmaTheme.text-dim;
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            ToolbarButton {
+                label: root.busy ? "Checking…" : "Check for updates";
+                enabled: !root.busy;
+                clicked => { root.check-updates(); }
+            }
+            ToolbarButton {
+                label: "Download bundle";
+                enabled: root.update-available && root.bundle-url != "" && !root.busy;
+                clicked => { root.download-bundle(); }
+            }
+        }
+        Text {
+            text: root.notes;
+            color: SigmaTheme.text-dim;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+        Text {
+            text: root.status-text;
+            color: SigmaTheme.text;
+            wrap: word-wrap;
+            font-size: SigmaTheme.font-size-small;
+        }
+    }
+}

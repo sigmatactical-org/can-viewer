@@ -1,0 +1,666 @@
+import { ListView } from "std-widgets.slint";
+import { SigmaTheme } from "../theme.slint";
+import { DbcMessageRow, DbcSignalRow, DbcNodeRow, DbcAttributeRow, DbcValueDescRow, DbcBitRow, DbcBitBand, ToolbarButton, StatusChip, CompactField } from "../widgets/common.slint";
+import { SignalBitMap } from "../widgets/bit_map.slint";
+
+export component DbcTab inherits Rectangle {
+    callback new-dbc();
+    callback open-dbc();
+    callback open-dbc-catalog();
+    callback begin-edit();
+    callback undo-dbc();
+    callback save-dbc();
+    callback save-dbc-as();
+    callback field-edited();
+    callback add-message();
+    callback delete-message();
+    callback add-signal();
+    callback delete-signal();
+    callback add-node();
+    callback delete-node();
+    callback message-selected(int);
+    callback signal-selected(int);
+    callback node-selected(int);
+    callback refresh-bit-map();
+    callback bit-cell-clicked(int);
+
+    in-out property <string> dbc-path: "";
+    in-out property <bool> dirty: false;
+    in-out property <string> version: "";
+    in-out property <string> comment: "";
+    in-out property <[DbcMessageRow]> messages;
+    in-out property <[DbcSignalRow]> signals;
+    in-out property <[DbcNodeRow]> nodes;
+    in-out property <[DbcAttributeRow]> attributes;
+    in-out property <[DbcValueDescRow]> value-descriptions;
+    in-out property <[DbcBitBand]> bit-bands;
+    in-out property <string> bit-summary: "";
+    in-out property <int> bit-dlc: 0;
+    in-out property <int> selected-message: -1;
+    in-out property <int> selected-signal: -1;
+    in-out property <int> selected-node: -1;
+    in-out property <string> edit-message-id: "";
+    in-out property <string> edit-message-name: "";
+    in-out property <string> edit-message-dlc: "8";
+    in-out property <string> edit-message-sender: "";
+    in-out property <string> edit-signal-name: "";
+    in-out property <string> edit-signal-start: "0";
+    in-out property <string> edit-signal-length: "8";
+    in-out property <string> edit-signal-factor: "1";
+    in-out property <string> edit-signal-offset: "0";
+    in-out property <string> edit-signal-unit: "";
+    in-out property <string> edit-signal-byte-order: "Intel";
+    in-out property <string> edit-node-name: "";
+    in-out property <string> edit-node-comment: "";
+    // 0 Messages, 1 Nodes, 2 Header, 3 Attributes, 4 Val Desc
+    in-out property <int> editor-panel: 0;
+    /// false = view (default), true = edit
+    in-out property <bool> editing: false;
+    in-out property <bool> undo-confirm-open: false;
+
+    background: SigmaTheme.background;
+
+    pure function bit-map-block-height() -> length {
+        if root.bit-bands.length == 0 {
+            return 0px;
+        }
+        // summary + spacing + bands (48 each, 8 between) + spacing + legend
+        return 14px + 4px
+            + root.bit-bands.length * 48px
+            + max(0, root.bit-bands.length - 1) * 8px
+            + 4px + 14px;
+    }
+
+    pure function message-expanded-height() -> length {
+        // Header + message fields + signals header + signal rows + editor + bit map + spacing/padding
+        return SigmaTheme.row-height
+            + 12px
+            + 40px
+            + 6px
+            + 28px
+            + 6px
+            + root.signals.length * SigmaTheme.row-height
+            + (root.selected-signal >= 0 ? 52px : 0px)
+            + 6px
+            + root.bit-map-block-height()
+            + 12px;
+    }
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        HorizontalLayout {
+            spacing: 8px;
+            ToolbarButton {
+                label: "Catalog";
+                clicked => { root.open-dbc-catalog(); }
+            }
+            ToolbarButton {
+                label: "New";
+                clicked => {
+                    root.editing = true;
+                    root.new-dbc();
+                }
+            }
+            if !root.editing: ToolbarButton {
+                label: "Edit";
+                clicked => {
+                    root.begin-edit();
+                    root.editing = true;
+                }
+            }
+            if root.editing: ToolbarButton {
+                label: "Undo";
+                enabled: root.dirty;
+                clicked => { root.undo-confirm-open = true; }
+            }
+            if root.editing: ToolbarButton {
+                label: "Save";
+                enabled: root.dirty;
+                clicked => { root.save-dbc(); }
+            }
+            ToolbarButton {
+                label: "Save As";
+                clicked => { root.save-dbc-as(); }
+            }
+            if root.dirty: StatusChip {
+                label: "";
+                value: "● Modified";
+                value-color: SigmaTheme.accent-amber;
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
+
+        HorizontalLayout {
+            spacing: 4px;
+            ToolbarButton {
+                label: "Messages";
+                selected: root.editor-panel == 0;
+                clicked => { root.editor-panel = 0; }
+            }
+            ToolbarButton {
+                label: "Nodes";
+                selected: root.editor-panel == 1;
+                clicked => { root.editor-panel = 1; }
+            }
+            ToolbarButton {
+                label: "Attributes";
+                selected: root.editor-panel == 3;
+                clicked => { root.editor-panel = 3; }
+            }
+            ToolbarButton {
+                label: "Val Desc";
+                selected: root.editor-panel == 4;
+                clicked => { root.editor-panel = 4; }
+            }
+            ToolbarButton {
+                label: "Header";
+                selected: root.editor-panel == 2;
+                clicked => { root.editor-panel = 2; }
+            }
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+            background: SigmaTheme.surface;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: SigmaTheme.border;
+
+            if root.editor-panel == 0: VerticalLayout {
+                padding: 4px;
+                spacing: 4px;
+                if root.editing: HorizontalLayout {
+                    spacing: 6px;
+                    ToolbarButton { label: "+ Message"; clicked => { root.add-message(); } }
+                    ToolbarButton { label: "− Message"; clicked => { root.delete-message(); } }
+                }
+                ListView {
+                    for msg[i] in root.messages: Rectangle {
+                        height: i == root.selected-message
+                            ? root.message-expanded-height()
+                            : SigmaTheme.row-height;
+                        background: i == root.selected-message
+                            ? SigmaTheme.accent.transparentize(0.92)
+                            : transparent;
+                        border-width: i == root.selected-message ? 1px : 0px;
+                        border-color: SigmaTheme.border;
+                        border-radius: 4px;
+
+                        VerticalLayout {
+                            alignment: start;
+                            Rectangle {
+                                height: SigmaTheme.row-height;
+                                background: i == root.selected-message
+                                    ? SigmaTheme.accent.transparentize(0.85)
+                                    : transparent;
+                                TouchArea { clicked => { root.message-selected(i); } }
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    padding-right: 8px;
+                                    spacing: 8px;
+                                    Text {
+                                        text: i == root.selected-message ? "▾" : "▸";
+                                        width: 16px;
+                                        color: SigmaTheme.text-dim;
+                                        font-size: SigmaTheme.font-size-small;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: msg.id;
+                                        width: 80px;
+                                        color: SigmaTheme.accent-amber;
+                                        font-size: SigmaTheme.font-size-small;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: msg.name;
+                                        width: 140px;
+                                        color: SigmaTheme.text;
+                                        font-size: SigmaTheme.font-size-small;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: "DLC " + msg.dlc;
+                                        width: 56px;
+                                        color: SigmaTheme.text-dim;
+                                        font-size: SigmaTheme.font-size-small;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: msg.sender;
+                                        width: 100px;
+                                        color: SigmaTheme.text-dim;
+                                        font-size: SigmaTheme.font-size-small;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: msg.signal-count + " signals";
+                                        horizontal-stretch: 1;
+                                        color: SigmaTheme.text-dim;
+                                        font-size: SigmaTheme.font-size-small;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+
+                            if i == root.selected-message: VerticalLayout {
+                                padding: 6px;
+                                padding-top: 4px;
+                                spacing: 6px;
+                                alignment: start;
+                                vertical-stretch: 0;
+
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    alignment: start;
+                                    CompactField {
+                                        label: "ID (hex)";
+                                        text <=> root.edit-message-id;
+                                        read-only: !root.editing;
+                                        width: 88px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    CompactField {
+                                        label: "Name";
+                                        text <=> root.edit-message-name;
+                                        read-only: !root.editing;
+                                        horizontal-stretch: 1;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    CompactField {
+                                        label: "DLC";
+                                        text <=> root.edit-message-dlc;
+                                        read-only: !root.editing;
+                                        width: 48px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    CompactField {
+                                        label: "Sender";
+                                        text <=> root.edit-message-sender;
+                                        read-only: !root.editing;
+                                        width: 120px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    alignment: start;
+                                    Text {
+                                        text: "Signals (" + root.signals.length + ")";
+                                        color: SigmaTheme.text;
+                                        font-weight: 600;
+                                        vertical-alignment: center;
+                                    }
+                                    Rectangle { horizontal-stretch: 1; }
+                                    if root.editing: ToolbarButton { label: "+ Signal"; clicked => { root.add-signal(); } }
+                                    if root.editing: ToolbarButton { label: "− Signal"; clicked => { root.delete-signal(); } }
+                                }
+
+                                VerticalLayout {
+                                    spacing: 0px;
+                                    for sig[j] in root.signals: Rectangle {
+                                        height: SigmaTheme.row-height;
+                                        background: j == root.selected-signal
+                                            ? SigmaTheme.accent.transparentize(0.8)
+                                            : SigmaTheme.surface-raised;
+                                        TouchArea { clicked => { root.signal-selected(j); } }
+                                        HorizontalLayout {
+                                            padding-left: 8px;
+                                            padding-right: 8px;
+                                            spacing: 8px;
+                                            Text {
+                                                text: sig.name;
+                                                width: 120px;
+                                                color: SigmaTheme.accent;
+                                                font-size: SigmaTheme.font-size-small;
+                                                vertical-alignment: center;
+                                            }
+                                            Text {
+                                                text: "bit " + sig.start-bit;
+                                                width: 56px;
+                                                color: SigmaTheme.text-dim;
+                                                font-size: SigmaTheme.font-size-small;
+                                                vertical-alignment: center;
+                                            }
+                                            Text {
+                                                text: "len " + sig.length;
+                                                width: 56px;
+                                                color: SigmaTheme.text-dim;
+                                                font-size: SigmaTheme.font-size-small;
+                                                vertical-alignment: center;
+                                            }
+                                            Text {
+                                                text: sig.byte-order;
+                                                width: 72px;
+                                                color: sig.byte-order == "Motorola"
+                                                    ? SigmaTheme.accent-amber
+                                                    : SigmaTheme.text-dim;
+                                                font-size: SigmaTheme.font-size-small;
+                                                vertical-alignment: center;
+                                            }
+                                            Text {
+                                                text: "×" + sig.factor;
+                                                width: 64px;
+                                                color: SigmaTheme.text-dim;
+                                                font-size: SigmaTheme.font-size-small;
+                                                vertical-alignment: center;
+                                            }
+                                            Text {
+                                                text: sig.unit;
+                                                horizontal-stretch: 1;
+                                                color: SigmaTheme.text-dim;
+                                                font-size: SigmaTheme.font-size-small;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if root.selected-signal >= 0: HorizontalLayout {
+                                    spacing: 8px;
+                                    alignment: start;
+                                    CompactField {
+                                        label: "Name";
+                                        text <=> root.edit-signal-name;
+                                        read-only: !root.editing;
+                                        horizontal-stretch: 1;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    CompactField {
+                                        label: "Start";
+                                        text <=> root.edit-signal-start;
+                                        read-only: !root.editing;
+                                        width: 52px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    CompactField {
+                                        label: "Length";
+                                        text <=> root.edit-signal-length;
+                                        read-only: !root.editing;
+                                        width: 52px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 2px;
+                                        width: 168px;
+                                        Text {
+                                            text: "Endian";
+                                            color: SigmaTheme.text-dim;
+                                            font-size: 9px;
+                                            height: 14px;
+                                        }
+                                        HorizontalLayout {
+                                            spacing: 4px;
+                                            height: 24px;
+                                            ToolbarButton {
+                                                label: "Intel";
+                                                selected: root.edit-signal-byte-order == "Intel";
+                                                enabled: root.editing;
+                                                clicked => {
+                                                    root.edit-signal-byte-order = "Intel";
+                                                    root.field-edited();
+                                                }
+                                            }
+                                            ToolbarButton {
+                                                label: "Motorola";
+                                                selected: root.edit-signal-byte-order == "Motorola";
+                                                enabled: root.editing;
+                                                clicked => {
+                                                    root.edit-signal-byte-order = "Motorola";
+                                                    root.field-edited();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    CompactField {
+                                        label: "Factor";
+                                        text <=> root.edit-signal-factor;
+                                        read-only: !root.editing;
+                                        width: 64px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    CompactField {
+                                        label: "Offset";
+                                        text <=> root.edit-signal-offset;
+                                        read-only: !root.editing;
+                                        width: 64px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                    CompactField {
+                                        label: "Unit";
+                                        text <=> root.edit-signal-unit;
+                                        read-only: !root.editing;
+                                        width: 72px;
+                                        edited => { root.field-edited(); }
+                                    }
+                                }
+
+                                SignalBitMap {
+                                    bands: root.bit-bands;
+                                    summary: root.bit-summary;
+                                    dlc: root.bit-dlc;
+                                    cell-clicked(sig-idx) => { root.bit-cell-clicked(sig-idx); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if root.editor-panel == 1: VerticalLayout {
+                padding: 4px;
+                spacing: 4px;
+                if root.editing: HorizontalLayout {
+                    spacing: 6px;
+                    ToolbarButton { label: "+ Node"; clicked => { root.add-node(); } }
+                    ToolbarButton { label: "− Node"; clicked => { root.delete-node(); } }
+                }
+                ListView {
+                    for node[i] in root.nodes: Rectangle {
+                        height: SigmaTheme.row-height;
+                        background: i == root.selected-node ? SigmaTheme.accent.transparentize(0.85) : transparent;
+                        TouchArea { clicked => { root.node-selected(i); } }
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            spacing: 8px;
+                            Text {
+                                text: node.name;
+                                width: 120px;
+                                color: SigmaTheme.text;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: node.comment;
+                                horizontal-stretch: 1;
+                                color: SigmaTheme.text-dim;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+                if root.selected-node >= 0: HorizontalLayout {
+                    padding: 6px;
+                    spacing: 8px;
+                    alignment: start;
+                    CompactField {
+                        label: "Name";
+                        text <=> root.edit-node-name;
+                        read-only: !root.editing;
+                        width: 160px;
+                        edited => { root.field-edited(); }
+                    }
+                    CompactField {
+                        label: "Comment";
+                        text <=> root.edit-node-comment;
+                        read-only: !root.editing;
+                        horizontal-stretch: 1;
+                        edited => { root.field-edited(); }
+                    }
+                }
+            }
+
+            if root.editor-panel == 2: VerticalLayout {
+                padding: 12px;
+                spacing: 6px;
+                alignment: start;
+                Text { text: "DBC Header"; color: SigmaTheme.text; font-weight: 600; }
+                CompactField {
+                    label: "Version";
+                    text <=> root.version;
+                    read-only: !root.editing;
+                    width: 240px;
+                    edited => { root.field-edited(); }
+                }
+                CompactField {
+                    label: "Comment";
+                    text <=> root.comment;
+                    read-only: !root.editing;
+                    width: 480px;
+                    edited => { root.field-edited(); }
+                }
+            }
+
+            if root.editor-panel == 3: VerticalLayout {
+                padding: 4px;
+                HorizontalLayout {
+                    padding-left: 8px;
+                    Text {
+                        text: "Attribute definitions";
+                        color: SigmaTheme.text-dim;
+                        font-size: SigmaTheme.font-size-small;
+                        vertical-alignment: center;
+                    }
+                }
+                ListView {
+                    for attr in root.attributes: Rectangle {
+                        height: SigmaTheme.row-height;
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            spacing: 8px;
+                            Text {
+                                text: attr.name;
+                                width: 120px;
+                                color: SigmaTheme.accent;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: attr.object-type;
+                                width: 80px;
+                                color: SigmaTheme.text-dim;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: attr.value-summary;
+                                horizontal-stretch: 1;
+                                color: SigmaTheme.text;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if root.editor-panel == 4: VerticalLayout {
+                padding: 4px;
+                HorizontalLayout {
+                    padding-left: 8px;
+                    Text {
+                        text: "Value descriptions (VAL_)";
+                        color: SigmaTheme.text-dim;
+                        font-size: SigmaTheme.font-size-small;
+                        vertical-alignment: center;
+                    }
+                }
+                ListView {
+                    for vd in root.value-descriptions: Rectangle {
+                        height: SigmaTheme.row-height;
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            spacing: 8px;
+                            Text {
+                                text: vd.message-id;
+                                width: 80px;
+                                color: SigmaTheme.accent-amber;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: vd.signal-name;
+                                width: 100px;
+                                color: SigmaTheme.accent;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: vd.entries;
+                                horizontal-stretch: 1;
+                                color: SigmaTheme.text-dim;
+                                font-size: SigmaTheme.font-size-small;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if root.undo-confirm-open: Rectangle {
+        width: 100%;
+        height: 100%;
+        background: #00000088;
+        TouchArea { clicked => { root.undo-confirm-open = false; } }
+
+        Rectangle {
+            width: 360px;
+            height: 140px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: SigmaTheme.surface-raised;
+            border-radius: 6px;
+            border-width: 1px;
+            border-color: SigmaTheme.border;
+
+            VerticalLayout {
+                padding: 16px;
+                spacing: 12px;
+
+                Text {
+                    text: "Revert all changes?";
+                    color: SigmaTheme.text;
+                    font-weight: 600;
+                }
+                Text {
+                    text: "This restores the DBC to how it was when you started editing. Unsaved edits will be lost.";
+                    color: SigmaTheme.text-dim;
+                    font-size: SigmaTheme.font-size-small;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+                    Rectangle { horizontal-stretch: 1; }
+                    ToolbarButton {
+                        label: "Cancel";
+                        clicked => { root.undo-confirm-open = false; }
+                    }
+                    ToolbarButton {
+                        label: "Revert";
+                        clicked => {
+                            root.undo-confirm-open = false;
+                            root.undo-dbc();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
