@@ -1,0 +1,19 @@
+[Unit]
+Description=Virtual CAN interface %i (persistent, for CAN tooling/tests)
+Documentation=https://www.kernel.org/doc/html/latest/networking/can.html
+# Bring it up early, before things that might want a CAN bus.
+After=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Load the in-kernel vcan module, create the interface if it isn't there yet,
+# and bring it up. Commands run through /bin/sh so PATH resolves modprobe/ip.
+ExecStartPre=/bin/sh -c 'modprobe vcan'
+ExecStart=/bin/sh -c 'ip link show "%i" >/dev/null 2>&1 || ip link add dev "%i" type vcan'
+ExecStart=/bin/sh -c 'ip link set up dev "%i"'
+ExecStop=/bin/sh -c 'ip link delete dev "%i"'
+
+[Install]
+WantedBy=multi-user.target

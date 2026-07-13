@@ -1,3 +1,7 @@
+[alias]
+mechanic = "run -p sigma-racer-mechanic"
+viewer = "run -p can-viewer"
+
 [patch."https://github.com/sigmatactical-org/sigma-racer-telemetry.git"]
 sigma-racer-telemetry = { path = "../sigma-racer-telemetry" }
 

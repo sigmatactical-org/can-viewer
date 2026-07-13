@@ -25,12 +25,12 @@ include = [
 ]
 
 [build-dependencies]
-slint-build = "=1.13.1"
+slint-build = "=1.17.1"
 serde_json = { workspace = true }
 
 [dependencies]
 sigma-diagnostics = { path = "../sigma-diagnostics" }
-slint = { version = "=1.13.1", default-features = false, features = [
+slint = { version = "=1.17.1", default-features = false, features = [
     "renderer-femtovg",
     "backend-winit",
     "compat-1-2",
@@ -40,10 +40,10 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
 parking_lot = { workspace = true }
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4.6.1", features = ["derive"] }
 dirs = "6"
-rfd = "0.15"
-env_logger = "0.11"
+rfd = "0.17.2"
+env_logger = "0.11.11"
 dbc-rs = { workspace = true }
 
 [lib]

@@ -49,7 +49,7 @@ impl Mdf4Controller {
         });
         ui.on_mdf4_open_dbc({
             let this = self.clone();
-            move || this.open_dbc()
+            move || this.open_dbc_file()
         });
         ui.on_export_mdf4({
             let this = self.clone();
@@ -193,26 +193,20 @@ impl Mdf4Controller {
         }
     }
 
-    /// Header DBC button: fetch latest Sigma Racer DBC from updates and cache it.
-    /// Falls back to a local file picker if updates is unreachable.
-    fn open_dbc(&self) {
-        match self.load_latest_dbc_from_updates() {
-            Ok(()) => {}
-            Err(updates_err) => {
-                log::warn!("Updates DBC unavailable ({updates_err}); falling back to file picker");
-                if let Some(path) = pick_open_file("Open DBC", &[("DBC", &["dbc"])]) {
-                    match self.cache_and_load_local_dbc(Path::new(&path)) {
-                        Ok(()) => {}
-                        Err(e) => self.with_ui(|ui| {
-                            ui.set_mdf4_frame_count(format!("DBC load failed: {e}").into());
-                        }),
-                    }
-                } else {
-                    self.with_ui(|ui| {
-                        ui.set_mdf4_frame_count(format!("DBC unavailable: {updates_err}").into());
-                    });
-                }
-            }
+    /// "DBC" / "Open" button handler: pick a `.dbc` file and load it into the
+    /// editor + decode state. Goes straight to the native file picker (no
+    /// blocking network fetch), which is what an open action should do — the
+    /// updates/catalog flow lives on the "Catalog" button. Runs on the UI
+    /// thread, but the picker and local load are effectively instant.
+    fn open_dbc_file(&self) {
+        let Some(path) = pick_open_file("Open DBC", &[("DBC", &["dbc"])]) else {
+            return; // user cancelled the picker
+        };
+        if let Err(e) = self.cache_and_load_local_dbc(Path::new(&path)) {
+            log::warn!("DBC load failed: {e}");
+            self.with_ui(|ui| {
+                ui.set_mdf4_frame_count(format!("DBC load failed: {e}").into());
+            });
         }
     }
 

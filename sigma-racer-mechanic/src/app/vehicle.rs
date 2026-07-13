@@ -348,9 +348,12 @@ impl VehicleController {
                     .unwrap_or("bundle.raucb");
                 let path = dir.join(name);
                 let mut reader = ureq::get(&url)
-                    .timeout(std::time::Duration::from_secs(120))
+                    .config()
+                    .timeout_global(Some(std::time::Duration::from_secs(120)))
+                    .build()
                     .call()
                     .map_err(|e| e.to_string())?
+                    .into_body()
                     .into_reader();
                 let mut bytes = Vec::new();
                 std::io::Read::read_to_end(&mut reader, &mut bytes).map_err(|e| e.to_string())?;
