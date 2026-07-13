@@ -1,30 +1,9 @@
 //! SocketCAN capture services (Linux only).
 
-use crate::dto::{CanBpfFilter, CanErrorDto, LiveCaptureDisplay};
+use crate::dto::CanBpfFilter;
 use crate::state::DiagnosticsState;
-use std::sync::mpsc;
 
-/// Handle for polling live capture updates from the UI thread.
-pub struct CaptureSession {
-    update_rx: mpsc::Receiver<LiveCaptureDisplay>,
-}
-
-impl CaptureSession {
-    /// Drain pending updates and return the latest display state.
-    pub fn poll_update(&self) -> Option<LiveCaptureDisplay> {
-        let mut latest = None;
-        while let Ok(update) = self.update_rx.try_recv() {
-            latest = Some(update);
-        }
-        latest
-    }
-}
-
-#[cfg(target_os = "linux")]
-enum CaptureMessage {
-    Frame(crate::dto::CanFrameDto),
-    Error(CanErrorDto),
-}
+use super::CaptureSession;
 
 /// List available SocketCAN interfaces.
 #[cfg(target_os = "linux")]
@@ -68,7 +47,8 @@ pub fn start_capture(
     filters: Option<Vec<CanBpfFilter>>,
     state: &DiagnosticsState,
 ) -> Result<CaptureSession, String> {
-    use crate::dto::CanFrameDto;
+    use super::capture_message::CaptureMessage;
+    use crate::dto::{CanErrorDto, CanFrameDto, LiveCaptureDisplay};
     use crate::live_capture::LiveCaptureState;
     use mdf4_rs::can::RawCanLogger;
     use socketcan::{CanFdSocket, CanFilter, Socket, SocketOptions};

@@ -1,71 +1,23 @@
-//! Active vehicle link for Mechanic (SocketCAN or Wingman WiFi telemetry).
+use std::path::PathBuf;
+
+use parking_lot::Mutex;
+use sigma_racer_telemetry::TcpTelemetryClient;
+use sigma_racer_telemetry::VehicleState;
 
 use crate::capture::{self, CaptureSession};
 use crate::state::DiagnosticsState;
 use crate::vehicle::diagnosis::DiagnosisSnapshot;
 use crate::vehicle::m7;
-use crate::vehicle::recording::{new_session_path, TelemetryRecorder, TelemetryReplayer};
+use crate::vehicle::recording::{TelemetryRecorder, TelemetryReplayer, new_session_path};
 use crate::vehicle::transport::VehicleTransport;
-use parking_lot::Mutex;
-use sigma_racer_telemetry::TcpTelemetryClient;
-use sigma_racer_telemetry::VehicleState;
-use sigma_racer_telemetry::DEFAULT_TCP_PORT;
-use std::path::PathBuf;
 
-/// Default Wingman telemetry relay port.
-pub const DEFAULT_WIFI_PORT: u16 = DEFAULT_TCP_PORT;
-
-/// Link parameters for SocketCAN or WiFi telemetry.
-#[derive(Debug, Clone)]
-pub struct VehicleLinkConfig {
-    pub transport: VehicleTransport,
-    pub interface: String,
-    pub bitrate: u32,
-    pub wifi_host: String,
-    pub wifi_port: u16,
-    pub use_m7_draft_dbc: bool,
-    pub record_session: bool,
-}
-
-impl Default for VehicleLinkConfig {
-    fn default() -> Self {
-        Self {
-            transport: VehicleTransport::SocketCan,
-            interface: "can0".into(),
-            bitrate: 500_000,
-            wifi_host: String::new(),
-            wifi_port: DEFAULT_WIFI_PORT,
-            use_m7_draft_dbc: true,
-            record_session: true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VehicleSessionStatus {
-    Disconnected,
-    Connecting,
-    Connected,
-    Replaying,
-    Error,
-}
-
-impl VehicleSessionStatus {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Disconnected => "Disconnected",
-            Self::Connecting => "Connecting",
-            Self::Connected => "Connected",
-            Self::Replaying => "Replaying",
-            Self::Error => "Error",
-        }
-    }
-}
+use super::{VehicleLinkConfig, VehicleSessionStatus};
 
 fn capture_log_path() -> PathBuf {
     std::env::temp_dir().join("sigma-racer-mechanic-capture.mf4")
 }
 
+/// Active vehicle link for Mechanic (SocketCAN or Wingman WiFi telemetry).
 pub struct VehicleSession {
     config: Mutex<VehicleLinkConfig>,
     status: Mutex<VehicleSessionStatus>,

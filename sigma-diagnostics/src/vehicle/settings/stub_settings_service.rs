@@ -1,16 +1,4 @@
-//! Vehicle settings read/write (protocol pending with Wingman).
-
-#[derive(Debug, Clone)]
-pub struct VehicleSetting {
-    pub key: String,
-    pub value: String,
-    pub read_only: bool,
-}
-
-pub trait SettingsService {
-    fn list(&self) -> Result<Vec<VehicleSetting>, String>;
-    fn write(&self, key: &str, value: &str) -> Result<(), String>;
-}
+use super::{SettingsService, VehicleSetting};
 
 /// Placeholder until Wingman exposes a config service over CAN.
 #[derive(Debug, Default)]

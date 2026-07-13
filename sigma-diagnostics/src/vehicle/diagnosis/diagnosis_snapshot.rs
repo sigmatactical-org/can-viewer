@@ -1,15 +1,7 @@
-//! Live diagnosis snapshot from decoded vehicle CAN frames or VSS telemetry.
-
 use crate::dto::{LiveCaptureDisplay, LiveSignalRow};
 use sigma_racer_telemetry::VehicleState;
 
-/// One vital for the Mechanic diagnosis panel (VSS-aligned labels).
-#[derive(Debug, Clone, Default)]
-pub struct VitalSignal {
-    pub name: String,
-    pub value: String,
-    pub unit: String,
-}
+use super::VitalSignal;
 
 /// Aggregated diagnosis view for the shop UI.
 #[derive(Debug, Clone, Default)]

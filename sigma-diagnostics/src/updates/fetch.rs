@@ -1,58 +1,8 @@
-//! Fetch Sigma Racer DBC schemas from the sigma-updates catalog.
+//! HTTP fetch/download helpers for the sigma-updates DBC catalog.
 
-use serde::Deserialize;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DbcCatalogFile {
-    pub filename: String,
-    pub name: String,
-    pub size_bytes: u64,
-    pub download_path: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct DbcCatalogResponse {
-    pub files: Vec<DbcCatalogFile>,
-    pub total: usize,
-    pub page: u32,
-    pub per_page: u32,
-    pub total_pages: u32,
-    #[serde(default)]
-    pub query: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct UpdatesConfig {
-    pub base_url: String,
-}
-
-impl UpdatesConfig {
-    pub fn from_env() -> Self {
-        Self {
-            base_url: std::env::var("SIGMA_UPDATES_URL")
-                .unwrap_or_else(|_| "http://updates.sigma.localtest.me:30080".into())
-                .trim_end_matches('/')
-                .to_owned(),
-        }
-    }
-
-    pub fn list_dbc_url(&self) -> String {
-        format!("{}/v1/dbc?page=1&per_page=500", self.base_url)
-    }
-
-    pub fn latest_dbc_url(&self) -> String {
-        format!("{}/v1/dbc/latest", self.base_url)
-    }
-
-    pub fn download_url(&self, download_path: &str) -> String {
-        if download_path.starts_with("http://") || download_path.starts_with("https://") {
-            download_path.to_owned()
-        } else {
-            format!("{}{}", self.base_url, download_path)
-        }
-    }
-}
+use super::{DbcCatalogFile, DbcCatalogResponse, UpdatesConfig};
 
 pub fn fetch_dbc_catalog(cfg: &UpdatesConfig) -> Result<Vec<DbcCatalogFile>, String> {
     let body = ureq::get(&cfg.list_dbc_url())
