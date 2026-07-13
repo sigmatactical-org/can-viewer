@@ -8,7 +8,7 @@ use crate::capture::{self, CaptureSession};
 use crate::state::DiagnosticsState;
 use crate::vehicle::diagnosis::DiagnosisSnapshot;
 use crate::vehicle::m7;
-use crate::vehicle::recording::{TelemetryRecorder, TelemetryReplayer, new_session_path};
+use crate::vehicle::recording::{new_session_path, TelemetryRecorder, TelemetryReplayer};
 use crate::vehicle::transport::VehicleTransport;
 
 use super::{VehicleLinkConfig, VehicleSessionStatus};

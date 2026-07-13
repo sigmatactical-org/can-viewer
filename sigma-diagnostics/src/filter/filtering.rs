@@ -6,7 +6,9 @@ use crate::dto::CanFrameDto;
 use crate::state::DiagnosticsState;
 
 use super::pattern::{match_data_pattern, parse_data_pattern};
-use super::{DbcMessageCache, FilterConfig, FilterResult, MatchStatus, build_message_cache_from_dbc};
+use super::{
+    build_message_cache_from_dbc, DbcMessageCache, FilterConfig, FilterResult, MatchStatus,
+};
 
 /// Filter frames using a pre-built message cache.
 /// This is the core filtering function that both base and pro versions use.

@@ -20,7 +20,7 @@ mod statistics;
 #[cfg(test)]
 mod tests;
 
-pub use dbc_message_info::{DbcMessageCache, DbcMessageInfo, build_message_cache_from_dbc};
+pub use dbc_message_info::{build_message_cache_from_dbc, DbcMessageCache, DbcMessageInfo};
 pub use dlc_detection_result::DlcDetectionResult;
 pub use filter_config::FilterConfig;
 pub use filter_result::FilterResult;

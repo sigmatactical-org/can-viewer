@@ -1,16 +1,11 @@
-//! Application state management.
-
-use crate::config::SessionConfig;
-use parking_lot::Mutex;
-use sigma_diagnostics::DiagnosticsState;
 use std::ops::Deref;
 
-/// Initial file paths from command line arguments.
-#[derive(Default)]
-pub struct InitialFiles {
-    pub dbc_path: Option<String>,
-    pub mdf4_path: Option<String>,
-}
+use parking_lot::Mutex;
+use sigma_diagnostics::DiagnosticsState;
+
+use crate::config::SessionConfig;
+
+use super::InitialFiles;
 
 /// Desktop app state: shared diagnostics domain + session persistence.
 pub struct AppState {

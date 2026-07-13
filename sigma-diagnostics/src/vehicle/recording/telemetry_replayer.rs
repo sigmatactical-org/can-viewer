@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
-use sigma_racer_telemetry::VehicleState;
 use sigma_racer_telemetry::protocol::Message;
+use sigma_racer_telemetry::VehicleState;
 
 /// Offline replay of a saved NDJSON session.
 pub struct TelemetryReplayer {
