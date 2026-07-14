@@ -135,16 +135,13 @@ fn generate_about_data() {
 
 at your option.
 
-The Sigma Tactical Group name, logos, marks, and artwork (including assets under \
-ui/assets/) are proprietary and are not covered by the software licenses. See BRANDING.md.
+The Sigma Tactical Group name, logos, marks, and artwork (including assets under ui/assets/) are proprietary and are not covered by the software licenses. See BRANDING.md.
 
-Redistributions must retain copyright notices and license texts for this software \
-and for third-party components listed below."#;
+Redistributions must retain copyright notices and license texts for this software and for third-party components listed below."#;
 
     let credits = r#"Maintained by Sigma Tactical Group (https://github.com/sigmatactical-org).
 
-Upstream lineage: formerly can-viewer (Tauri + TypeScript); \
-version 0.3.0 replaces the WebView UI with native Slint. Domain logic lives in the sigma-diagnostics crate; this package is the can-viewer UI.
+Upstream lineage: formerly can-viewer (Tauri + TypeScript); version 0.3.0 replaces the WebView UI with native Slint. Domain logic lives in the sigma-diagnostics crate; this package is the can-viewer UI.
 
 Key Sigma libraries: dbc-rs (DBC parsing/editing), mdf4-rs (ASAM MDF4 I/O).
 

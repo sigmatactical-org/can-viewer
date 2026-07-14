@@ -97,24 +97,28 @@ impl Mdf4Controller {
 
     /// Load files passed on the command line, if any.
     pub fn load_initial_files(&self) {
-        // Prefer the latest Sigma Racer DBC from updates (cached locally).
-        if let Err(e) = self.load_latest_dbc_from_updates() {
-            log::warn!("Updates DBC fetch skipped: {e}");
-            let initial = crate::services::get_initial_files(&self.state);
-            if let Some(path) = initial.dbc_path {
-                match load_dbc(&path, &self.state) {
-                    Ok(_) => {
-                        self.refresh_dbc_status();
-                        self.notify_dbc_editor();
-                    }
-                    Err(err) => log::warn!("Startup DBC load failed ({path}): {err}"),
+        let initial = crate::services::get_initial_files(&self.state);
+
+        // A DBC given on the command line wins over the cached updates DBC.
+        let mut dbc_loaded = false;
+        if let Some(path) = initial.dbc_path {
+            match load_dbc(&path, &self.state) {
+                Ok(_) => {
+                    self.refresh_dbc_status();
+                    self.notify_dbc_editor();
+                    dbc_loaded = true;
                 }
+                Err(err) => log::warn!("Startup DBC load failed ({path}): {err}"),
             }
-        } else {
-            self.notify_dbc_editor();
+        }
+        if !dbc_loaded {
+            // Fall back to the latest Sigma Racer DBC from updates (cached locally).
+            match self.load_latest_dbc_from_updates() {
+                Ok(_) => self.notify_dbc_editor(),
+                Err(e) => log::warn!("Updates DBC fetch skipped: {e}"),
+            }
         }
 
-        let initial = crate::services::get_initial_files(&self.state);
         if let Some(path) = initial.mdf4_path {
             self.load_mdf4_path(&path, true);
         }

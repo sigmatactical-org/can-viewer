@@ -4,6 +4,9 @@ import { AppTitle } from "../widgets/brand.slint";
 import { DepRow, ToolbarButton } from "../widgets/common.slint";
 
 export component AboutTab inherits Rectangle {
+    in property <string> app-title: "Diagnostics";
+    in property <string> app-description:
+        "Native desktop application for MDF4 log inspection, live SocketCAN capture (Linux), and DBC database editing.";
     in property <string> version-text;
     in property <string> copyright-text;
     in property <string> license-notice;
@@ -22,7 +25,7 @@ export component AboutTab inherits Rectangle {
             spacing: 14px;
             width: 100%;
 
-            AppTitle {}
+            AppTitle { title: root.app-title; }
 
             Text {
                 text: "Version " + root.version-text;
@@ -30,7 +33,7 @@ export component AboutTab inherits Rectangle {
             }
 
             Text {
-                text: "Native desktop application for MDF4 log inspection, live SocketCAN capture (Linux), and DBC database editing.";
+                text: root.app-description;
                 color: SigmaTheme.text;
                 wrap: word-wrap;
             }

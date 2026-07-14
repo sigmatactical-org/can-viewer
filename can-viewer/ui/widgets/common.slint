@@ -115,19 +115,92 @@ export struct DbcCatalogRow {
     size-text: string,
 }
 
+/// Body cell for table rows: small, vertically centered, elided.
+export component Cell inherits Text {
+    color: SigmaTheme.text;
+    font-size: SigmaTheme.font-size-small;
+    vertical-alignment: center;
+    overflow: elide;
+}
+
+/// Column header cell: dim, bold variant of Cell.
+export component HeaderCell inherits Cell {
+    color: SigmaTheme.text-dim;
+    font-weight: 600;
+}
+
+/// Column header strip above a ListView. Fill it with HeaderCells.
+export component TableHeader inherits Rectangle {
+    height: 28px;
+    background: SigmaTheme.surface-raised;
+    border-radius: 4px;
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 8px;
+        @children
+    }
+}
+
+/// Table row with the standard hover and selection washes.
+export component TableRow inherits Rectangle {
+    in property <bool> selected: false;
+    in property <bool> hoverable: true;
+    callback clicked <=> touch.clicked;
+    height: SigmaTheme.row-height;
+    background: root.selected
+        ? SigmaTheme.accent.transparentize(0.85)
+        : (root.hoverable && touch.has-hover ? SigmaTheme.surface-raised : transparent);
+    touch := TouchArea {
+        enabled: root.hoverable;
+    }
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 8px;
+        @children
+    }
+}
+
+/// Centered placeholder for lists with nothing to show yet.
+export component EmptyState inherits VerticalLayout {
+    in property <string> message;
+    in property <string> hint: "";
+    alignment: center;
+    spacing: 4px;
+    Text {
+        text: root.message;
+        color: SigmaTheme.text-dim;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    if root.hint != "": Text {
+        text: root.hint;
+        color: SigmaTheme.text-dim;
+        font-size: SigmaTheme.font-size-small;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+        opacity: 0.7;
+    }
+}
+
 export component ToolbarButton inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> enabled: true;
+    /// Destructive action: red accents instead of blue.
+    in property <bool> danger: false;
     callback clicked;
     height: 32px;
     opacity: root.enabled ? 1.0 : 0.45;
     background: root.selected
-        ? SigmaTheme.accent.transparentize(0.75)
+        ? (root.danger ? SigmaTheme.accent-red : SigmaTheme.accent).transparentize(0.75)
         : (touch.pressed && root.enabled ? SigmaTheme.surface-raised : SigmaTheme.surface);
     border-radius: 4px;
     border-width: 1px;
-    border-color: root.selected ? SigmaTheme.accent : SigmaTheme.border;
+    border-color: root.selected || root.danger
+        ? (root.danger ? SigmaTheme.accent-red : SigmaTheme.accent)
+        : SigmaTheme.border;
     touch := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }
@@ -138,13 +211,15 @@ export component ToolbarButton inherits Rectangle {
         alignment: center;
         Text {
             text: root.label;
-            color: root.selected ? SigmaTheme.accent : SigmaTheme.text;
+            color: root.danger
+                ? SigmaTheme.accent-red
+                : (root.selected ? SigmaTheme.accent : SigmaTheme.text);
             vertical-alignment: center;
         }
     }
 }
 
-/// Header load button. Same wash style as selected tabs, in green/red.
+/// Header load button. Green wash once a file is loaded, neutral before.
 /// Single line: "MDF4: file.mf4" / "DBC: —"
 export component FileLoadButton inherits Rectangle {
     in property <string> label;
@@ -155,18 +230,18 @@ export component FileLoadButton inherits Rectangle {
     private property <string> display-text:
         root.label + ": " + (root.filename == "" ? "—" : root.filename);
 
-    width: max(180px, label-text.preferred-width + 24px);
+    // Sized to content but capped, so long filenames elide instead of
+    // pushing the button strip into the tab bar.
+    width: clamp(label-text.preferred-width + 24px, 120px, 220px);
     height: 28px;
     background: root.loaded
         ? (touch.pressed
             ? SigmaTheme.accent-green.transparentize(0.55)
             : SigmaTheme.accent-green.transparentize(0.7))
-        : (touch.pressed
-            ? SigmaTheme.accent-red.transparentize(0.55)
-            : SigmaTheme.accent-red.transparentize(0.7));
+        : (touch.pressed ? SigmaTheme.surface-raised : SigmaTheme.surface);
     border-radius: 4px;
     border-width: 1px;
-    border-color: root.loaded ? SigmaTheme.accent-green : SigmaTheme.accent-red;
+    border-color: root.loaded ? SigmaTheme.accent-green : SigmaTheme.border;
     clip: true;
     touch := TouchArea {
         width: 100%;
@@ -180,7 +255,7 @@ export component FileLoadButton inherits Rectangle {
         alignment: center;
         label-text := Text {
             text: root.display-text;
-            color: root.loaded ? SigmaTheme.accent-green : SigmaTheme.accent-red;
+            color: root.loaded ? SigmaTheme.accent-green : SigmaTheme.text-dim;
             horizontal-alignment: center;
             vertical-alignment: center;
             font-weight: 600;
@@ -235,7 +310,7 @@ export component StatusChip inherits Rectangle {
         padding-left: 8px;
         padding-right: 8px;
         spacing: 6px;
-        Text { text: root.label; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
+        if root.label != "": Text { text: root.label; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
         Text { text: root.value; color: root.value-color; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
     }
 }

@@ -1,6 +1,6 @@
-import { ListView } from "std-widgets.slint";
+import { ListView, ScrollView } from "std-widgets.slint";
 import { SigmaTheme } from "../theme.slint";
-import { DbcMessageRow, DbcSignalRow, DbcNodeRow, DbcAttributeRow, DbcValueDescRow, DbcBitRow, DbcBitBand, ToolbarButton, StatusChip, CompactField } from "../widgets/common.slint";
+import { DbcMessageRow, DbcSignalRow, DbcNodeRow, DbcAttributeRow, DbcValueDescRow, DbcBitRow, DbcBitBand, ToolbarButton, StatusChip, CompactField, Cell, HeaderCell, TableHeader, TableRow, EmptyState } from "../widgets/common.slint";
 import { SignalBitMap } from "../widgets/bit_map.slint";
 
 export component DbcTab inherits Rectangle {
@@ -59,32 +59,6 @@ export component DbcTab inherits Rectangle {
     in-out property <bool> undo-confirm-open: false;
 
     background: SigmaTheme.background;
-
-    pure function bit-map-block-height() -> length {
-        if root.bit-bands.length == 0 {
-            return 0px;
-        }
-        // summary + spacing + bands (48 each, 8 between) + spacing + legend
-        return 14px + 4px
-            + root.bit-bands.length * 48px
-            + max(0, root.bit-bands.length - 1) * 8px
-            + 4px + 14px;
-    }
-
-    pure function message-expanded-height() -> length {
-        // Header + message fields + signals header + signal rows + editor + bit map + spacing/padding
-        return SigmaTheme.row-height
-            + 12px
-            + 40px
-            + 6px
-            + 28px
-            + 6px
-            + root.signals.length * SigmaTheme.row-height
-            + (root.selected-signal >= 0 ? 52px : 0px)
-            + 6px
-            + root.bit-map-block-height()
-            + 12px;
-    }
 
     VerticalLayout {
         padding: 8px;
@@ -168,89 +142,60 @@ export component DbcTab inherits Rectangle {
             border-width: 1px;
             border-color: SigmaTheme.border;
 
+            // Messages: list on top, detail editor for the selection below.
             if root.editor-panel == 0: VerticalLayout {
                 padding: 4px;
                 spacing: 4px;
+
                 if root.editing: HorizontalLayout {
                     spacing: 6px;
+                    alignment: start;
                     ToolbarButton { label: "+ Message"; clicked => { root.add-message(); } }
-                    ToolbarButton { label: "− Message"; clicked => { root.delete-message(); } }
+                    ToolbarButton { label: "− Message"; danger: true; clicked => { root.delete-message(); } }
                 }
-                ListView {
-                    for msg[i] in root.messages: Rectangle {
-                        height: i == root.selected-message
-                            ? root.message-expanded-height()
-                            : SigmaTheme.row-height;
-                        background: i == root.selected-message
-                            ? SigmaTheme.accent.transparentize(0.92)
-                            : transparent;
-                        border-width: i == root.selected-message ? 1px : 0px;
-                        border-color: SigmaTheme.border;
+
+                if root.messages.length == 0: EmptyState {
+                    vertical-stretch: 1;
+                    message: "No DBC loaded";
+                    hint: "Open a DBC with the header button, load one from the Catalog, or start a New one.";
+                }
+
+                if root.messages.length > 0: VerticalLayout {
+                    vertical-stretch: 1;
+                    spacing: 4px;
+
+                    TableHeader {
+                        HeaderCell { text: "ID"; width: 80px; }
+                        HeaderCell { text: "Name"; width: 140px; }
+                        HeaderCell { text: "DLC"; width: 56px; }
+                        HeaderCell { text: "Sender"; width: 100px; }
+                        HeaderCell { text: "Signals"; horizontal-stretch: 1; }
+                    }
+                    ListView {
+                        vertical-stretch: 1;
+                        for msg[i] in root.messages: TableRow {
+                            selected: i == root.selected-message;
+                            clicked => { root.message-selected(i); }
+                            Cell { text: msg.id; width: 80px; color: SigmaTheme.accent-amber; }
+                            Cell { text: msg.name; width: 140px; }
+                            Cell { text: msg.dlc; width: 56px; color: SigmaTheme.text-dim; }
+                            Cell { text: msg.sender; width: 100px; color: SigmaTheme.text-dim; }
+                            Cell { text: msg.signal-count; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
+                        }
+                    }
+
+                    if root.selected-message >= 0: Rectangle {
+                        vertical-stretch: 1;
+                        background: SigmaTheme.surface-raised.transparentize(0.5);
                         border-radius: 4px;
+                        border-width: 1px;
+                        border-color: SigmaTheme.border;
 
-                        VerticalLayout {
-                            alignment: start;
-                            Rectangle {
-                                height: SigmaTheme.row-height;
-                                background: i == root.selected-message
-                                    ? SigmaTheme.accent.transparentize(0.85)
-                                    : transparent;
-                                TouchArea { clicked => { root.message-selected(i); } }
-                                HorizontalLayout {
-                                    padding-left: 8px;
-                                    padding-right: 8px;
-                                    spacing: 8px;
-                                    Text {
-                                        text: i == root.selected-message ? "▾" : "▸";
-                                        width: 16px;
-                                        color: SigmaTheme.text-dim;
-                                        font-size: SigmaTheme.font-size-small;
-                                        vertical-alignment: center;
-                                    }
-                                    Text {
-                                        text: msg.id;
-                                        width: 80px;
-                                        color: SigmaTheme.accent-amber;
-                                        font-size: SigmaTheme.font-size-small;
-                                        vertical-alignment: center;
-                                    }
-                                    Text {
-                                        text: msg.name;
-                                        width: 140px;
-                                        color: SigmaTheme.text;
-                                        font-size: SigmaTheme.font-size-small;
-                                        vertical-alignment: center;
-                                    }
-                                    Text {
-                                        text: "DLC " + msg.dlc;
-                                        width: 56px;
-                                        color: SigmaTheme.text-dim;
-                                        font-size: SigmaTheme.font-size-small;
-                                        vertical-alignment: center;
-                                    }
-                                    Text {
-                                        text: msg.sender;
-                                        width: 100px;
-                                        color: SigmaTheme.text-dim;
-                                        font-size: SigmaTheme.font-size-small;
-                                        vertical-alignment: center;
-                                    }
-                                    Text {
-                                        text: msg.signal-count + " signals";
-                                        horizontal-stretch: 1;
-                                        color: SigmaTheme.text-dim;
-                                        font-size: SigmaTheme.font-size-small;
-                                        vertical-alignment: center;
-                                    }
-                                }
-                            }
-
-                            if i == root.selected-message: VerticalLayout {
-                                padding: 6px;
-                                padding-top: 4px;
-                                spacing: 6px;
+                        ScrollView {
+                            VerticalLayout {
+                                padding: 10px;
+                                spacing: 8px;
                                 alignment: start;
-                                vertical-stretch: 0;
 
                                 HorizontalLayout {
                                     spacing: 8px;
@@ -296,66 +241,39 @@ export component DbcTab inherits Rectangle {
                                     }
                                     Rectangle { horizontal-stretch: 1; }
                                     if root.editing: ToolbarButton { label: "+ Signal"; clicked => { root.add-signal(); } }
-                                    if root.editing: ToolbarButton { label: "− Signal"; clicked => { root.delete-signal(); } }
+                                    if root.editing: ToolbarButton { label: "− Signal"; danger: true; clicked => { root.delete-signal(); } }
                                 }
 
-                                VerticalLayout {
-                                    spacing: 0px;
-                                    for sig[j] in root.signals: Rectangle {
-                                        height: SigmaTheme.row-height;
-                                        background: j == root.selected-signal
-                                            ? SigmaTheme.accent.transparentize(0.8)
-                                            : SigmaTheme.surface-raised;
-                                        TouchArea { clicked => { root.signal-selected(j); } }
-                                        HorizontalLayout {
-                                            padding-left: 8px;
-                                            padding-right: 8px;
-                                            spacing: 8px;
-                                            Text {
-                                                text: sig.name;
-                                                width: 120px;
-                                                color: SigmaTheme.accent;
-                                                font-size: SigmaTheme.font-size-small;
-                                                vertical-alignment: center;
-                                            }
-                                            Text {
-                                                text: "bit " + sig.start-bit;
-                                                width: 56px;
-                                                color: SigmaTheme.text-dim;
-                                                font-size: SigmaTheme.font-size-small;
-                                                vertical-alignment: center;
-                                            }
-                                            Text {
-                                                text: "len " + sig.length;
-                                                width: 56px;
-                                                color: SigmaTheme.text-dim;
-                                                font-size: SigmaTheme.font-size-small;
-                                                vertical-alignment: center;
-                                            }
-                                            Text {
-                                                text: sig.byte-order;
-                                                width: 72px;
-                                                color: sig.byte-order == "Motorola"
-                                                    ? SigmaTheme.accent-amber
-                                                    : SigmaTheme.text-dim;
-                                                font-size: SigmaTheme.font-size-small;
-                                                vertical-alignment: center;
-                                            }
-                                            Text {
-                                                text: "×" + sig.factor;
-                                                width: 64px;
-                                                color: SigmaTheme.text-dim;
-                                                font-size: SigmaTheme.font-size-small;
-                                                vertical-alignment: center;
-                                            }
-                                            Text {
-                                                text: sig.unit;
-                                                horizontal-stretch: 1;
-                                                color: SigmaTheme.text-dim;
-                                                font-size: SigmaTheme.font-size-small;
-                                                vertical-alignment: center;
-                                            }
+                                if root.signals.length == 0: Text {
+                                    text: "This message has no signals yet.";
+                                    color: SigmaTheme.text-dim;
+                                    font-size: SigmaTheme.font-size-small;
+                                }
+
+                                if root.signals.length > 0: VerticalLayout {
+                                    TableHeader {
+                                        HeaderCell { text: "Signal"; width: 120px; }
+                                        HeaderCell { text: "Start"; width: 56px; }
+                                        HeaderCell { text: "Length"; width: 56px; }
+                                        HeaderCell { text: "Order"; width: 72px; }
+                                        HeaderCell { text: "Factor"; width: 64px; }
+                                        HeaderCell { text: "Unit"; horizontal-stretch: 1; }
+                                    }
+                                    for sig[j] in root.signals: TableRow {
+                                        selected: j == root.selected-signal;
+                                        clicked => { root.signal-selected(j); }
+                                        Cell { text: sig.name; width: 120px; color: SigmaTheme.accent; }
+                                        Cell { text: sig.start-bit; width: 56px; color: SigmaTheme.text-dim; }
+                                        Cell { text: sig.length; width: 56px; color: SigmaTheme.text-dim; }
+                                        Cell {
+                                            text: sig.byte-order;
+                                            width: 72px;
+                                            color: sig.byte-order == "Motorola"
+                                                ? SigmaTheme.accent-amber
+                                                : SigmaTheme.text-dim;
                                         }
+                                        Cell { text: "×" + sig.factor; width: 64px; color: SigmaTheme.text-dim; }
+                                        Cell { text: sig.unit; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
                                     }
                                 }
 
@@ -389,14 +307,14 @@ export component DbcTab inherits Rectangle {
                                         Text {
                                             text: "Endian";
                                             color: SigmaTheme.text-dim;
-                                            font-size: 9px;
+                                            font-size: SigmaTheme.font-size-small;
                                             height: 14px;
                                         }
                                         HorizontalLayout {
                                             spacing: 4px;
-                                            height: 24px;
                                             ToolbarButton {
                                                 label: "Intel";
+                                                height: 24px;
                                                 selected: root.edit-signal-byte-order == "Intel";
                                                 enabled: root.editing;
                                                 clicked => {
@@ -406,6 +324,7 @@ export component DbcTab inherits Rectangle {
                                             }
                                             ToolbarButton {
                                                 label: "Motorola";
+                                                height: 24px;
                                                 selected: root.edit-signal-byte-order == "Motorola";
                                                 enabled: root.editing;
                                                 clicked => {
@@ -455,51 +374,48 @@ export component DbcTab inherits Rectangle {
                 spacing: 4px;
                 if root.editing: HorizontalLayout {
                     spacing: 6px;
+                    alignment: start;
                     ToolbarButton { label: "+ Node"; clicked => { root.add-node(); } }
-                    ToolbarButton { label: "− Node"; clicked => { root.delete-node(); } }
+                    ToolbarButton { label: "− Node"; danger: true; clicked => { root.delete-node(); } }
                 }
-                ListView {
-                    for node[i] in root.nodes: Rectangle {
-                        height: SigmaTheme.row-height;
-                        background: i == root.selected-node ? SigmaTheme.accent.transparentize(0.85) : transparent;
-                        TouchArea { clicked => { root.node-selected(i); } }
-                        HorizontalLayout {
-                            padding-left: 8px;
-                            spacing: 8px;
-                            Text {
-                                text: node.name;
-                                width: 120px;
-                                color: SigmaTheme.text;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
-                            Text {
-                                text: node.comment;
-                                horizontal-stretch: 1;
-                                color: SigmaTheme.text-dim;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
+                if root.nodes.length == 0: EmptyState {
+                    vertical-stretch: 1;
+                    message: "No nodes defined";
+                }
+                if root.nodes.length > 0: VerticalLayout {
+                    vertical-stretch: 1;
+                    spacing: 4px;
+                    TableHeader {
+                        HeaderCell { text: "Node"; width: 120px; }
+                        HeaderCell { text: "Comment"; horizontal-stretch: 1; }
+                    }
+                    ListView {
+                        vertical-stretch: 1;
+                        for node[i] in root.nodes: TableRow {
+                            selected: i == root.selected-node;
+                            clicked => { root.node-selected(i); }
+                            Cell { text: node.name; width: 120px; }
+                            Cell { text: node.comment; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
                         }
                     }
-                }
-                if root.selected-node >= 0: HorizontalLayout {
-                    padding: 6px;
-                    spacing: 8px;
-                    alignment: start;
-                    CompactField {
-                        label: "Name";
-                        text <=> root.edit-node-name;
-                        read-only: !root.editing;
-                        width: 160px;
-                        edited => { root.field-edited(); }
-                    }
-                    CompactField {
-                        label: "Comment";
-                        text <=> root.edit-node-comment;
-                        read-only: !root.editing;
-                        horizontal-stretch: 1;
-                        edited => { root.field-edited(); }
+                    if root.selected-node >= 0: HorizontalLayout {
+                        padding: 6px;
+                        spacing: 8px;
+                        alignment: start;
+                        CompactField {
+                            label: "Name";
+                            text <=> root.edit-node-name;
+                            read-only: !root.editing;
+                            width: 160px;
+                            edited => { root.field-edited(); }
+                        }
+                        CompactField {
+                            label: "Comment";
+                            text <=> root.edit-node-comment;
+                            read-only: !root.editing;
+                            horizontal-stretch: 1;
+                            edited => { root.field-edited(); }
+                        }
                     }
                 }
             }
@@ -527,42 +443,25 @@ export component DbcTab inherits Rectangle {
 
             if root.editor-panel == 3: VerticalLayout {
                 padding: 4px;
-                HorizontalLayout {
-                    padding-left: 8px;
-                    Text {
-                        text: "Attribute definitions";
-                        color: SigmaTheme.text-dim;
-                        font-size: SigmaTheme.font-size-small;
-                        vertical-alignment: center;
-                    }
+                spacing: 4px;
+                if root.attributes.length == 0: EmptyState {
+                    vertical-stretch: 1;
+                    message: "No attribute definitions";
                 }
-                ListView {
-                    for attr in root.attributes: Rectangle {
-                        height: SigmaTheme.row-height;
-                        HorizontalLayout {
-                            padding-left: 8px;
-                            spacing: 8px;
-                            Text {
-                                text: attr.name;
-                                width: 120px;
-                                color: SigmaTheme.accent;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
-                            Text {
-                                text: attr.object-type;
-                                width: 80px;
-                                color: SigmaTheme.text-dim;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
-                            Text {
-                                text: attr.value-summary;
-                                horizontal-stretch: 1;
-                                color: SigmaTheme.text;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
+                if root.attributes.length > 0: VerticalLayout {
+                    vertical-stretch: 1;
+                    spacing: 4px;
+                    TableHeader {
+                        HeaderCell { text: "Attribute"; width: 120px; }
+                        HeaderCell { text: "Object"; width: 80px; }
+                        HeaderCell { text: "Value"; horizontal-stretch: 1; }
+                    }
+                    ListView {
+                        for attr in root.attributes: TableRow {
+                            hoverable: false;
+                            Cell { text: attr.name; width: 120px; color: SigmaTheme.accent; }
+                            Cell { text: attr.object-type; width: 80px; color: SigmaTheme.text-dim; }
+                            Cell { text: attr.value-summary; horizontal-stretch: 1; }
                         }
                     }
                 }
@@ -570,42 +469,25 @@ export component DbcTab inherits Rectangle {
 
             if root.editor-panel == 4: VerticalLayout {
                 padding: 4px;
-                HorizontalLayout {
-                    padding-left: 8px;
-                    Text {
-                        text: "Value descriptions (VAL_)";
-                        color: SigmaTheme.text-dim;
-                        font-size: SigmaTheme.font-size-small;
-                        vertical-alignment: center;
-                    }
+                spacing: 4px;
+                if root.value-descriptions.length == 0: EmptyState {
+                    vertical-stretch: 1;
+                    message: "No value descriptions (VAL_)";
                 }
-                ListView {
-                    for vd in root.value-descriptions: Rectangle {
-                        height: SigmaTheme.row-height;
-                        HorizontalLayout {
-                            padding-left: 8px;
-                            spacing: 8px;
-                            Text {
-                                text: vd.message-id;
-                                width: 80px;
-                                color: SigmaTheme.accent-amber;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
-                            Text {
-                                text: vd.signal-name;
-                                width: 100px;
-                                color: SigmaTheme.accent;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
-                            Text {
-                                text: vd.entries;
-                                horizontal-stretch: 1;
-                                color: SigmaTheme.text-dim;
-                                font-size: SigmaTheme.font-size-small;
-                                vertical-alignment: center;
-                            }
+                if root.value-descriptions.length > 0: VerticalLayout {
+                    vertical-stretch: 1;
+                    spacing: 4px;
+                    TableHeader {
+                        HeaderCell { text: "Message"; width: 80px; }
+                        HeaderCell { text: "Signal"; width: 100px; }
+                        HeaderCell { text: "Entries"; horizontal-stretch: 1; }
+                    }
+                    ListView {
+                        for vd in root.value-descriptions: TableRow {
+                            hoverable: false;
+                            Cell { text: vd.message-id; width: 80px; color: SigmaTheme.accent-amber; }
+                            Cell { text: vd.signal-name; width: 100px; color: SigmaTheme.accent; }
+                            Cell { text: vd.entries; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
                         }
                     }
                 }
@@ -654,6 +536,7 @@ export component DbcTab inherits Rectangle {
                     }
                     ToolbarButton {
                         label: "Revert";
+                        danger: true;
                         clicked => {
                             root.undo-confirm-open = false;
                             root.undo-dbc();

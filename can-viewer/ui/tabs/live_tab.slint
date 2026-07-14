@@ -1,6 +1,6 @@
 import { ListView, ComboBox } from "std-widgets.slint";
 import { SigmaTheme } from "../theme.slint";
-import { LiveMessageRow, LiveSignalRow, LiveFrameRow, LiveErrorRow, ToolbarButton, StatusChip } from "../widgets/common.slint";
+import { LiveMessageRow, LiveSignalRow, LiveFrameRow, LiveErrorRow, ToolbarButton, StatusChip, Cell, HeaderCell, TableHeader, TableRow, EmptyState } from "../widgets/common.slint";
 
 export component LiveTab inherits Rectangle {
     callback refresh-interfaces();
@@ -13,7 +13,6 @@ export component LiveTab inherits Rectangle {
     in-out property <bool> capturing: false;
     in-out property <string> capture-status: "Stopped";
     in-out property <string> stats-text: "";
-    in-out property <bool> linux-only: true;
     in-out property <[LiveMessageRow]> messages;
     in-out property <[LiveSignalRow]> signals;
     in-out property <[LiveFrameRow]> frames;
@@ -29,18 +28,6 @@ export component LiveTab inherits Rectangle {
         padding: 8px;
         spacing: 8px;
 
-        if !root.linux-only: Rectangle {
-            height: 48px;
-            background: SigmaTheme.accent-amber.transparentize(0.8);
-            border-radius: 4px;
-            Text {
-                text: "Live SocketCAN capture is only available on Linux.";
-                color: SigmaTheme.text;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-        }
-
         HorizontalLayout {
             spacing: 8px;
             ComboBox {
@@ -51,7 +38,11 @@ export component LiveTab inherits Rectangle {
             ToolbarButton { label: "Refresh"; clicked => { root.refresh-interfaces(); } }
             if !root.capturing: ToolbarButton { label: "Start"; clicked => { root.start-capture(); } }
             if root.capturing: ToolbarButton { label: "Stop"; clicked => { root.stop-capture(); } }
-            ToolbarButton { label: "Export MDF4"; clicked => { root.export-capture(); } }
+            ToolbarButton {
+                label: "Export MDF4";
+                enabled: root.frames.length > 0 || root.messages.length > 0;
+                clicked => { root.export-capture(); }
+            }
             StatusChip {
                 label: "Status";
                 value: root.capture-status;
@@ -65,7 +56,11 @@ export component LiveTab inherits Rectangle {
             spacing: 4px;
             ToolbarButton { label: "Messages"; selected: root.live-view == 0; clicked => { root.live-view = 0; } }
             ToolbarButton { label: "Frames"; selected: root.live-view == 1; clicked => { root.live-view = 1; } }
-            ToolbarButton { label: "Errors"; selected: root.live-view == 2; clicked => { root.live-view = 2; } }
+            ToolbarButton {
+                label: root.errors.length > 0 ? "Errors (" + root.errors.length + ")" : "Errors";
+                selected: root.live-view == 2;
+                clicked => { root.live-view = 2; }
+            }
         }
 
         Rectangle {
@@ -76,83 +71,129 @@ export component LiveTab inherits Rectangle {
             border-color: SigmaTheme.border;
 
             // 1. Messages and their related signals (click a message to filter).
-            if root.live-view == 0: VerticalLayout {
+            if root.live-view == 0 && root.messages.length == 0: EmptyState {
+                message: "No traffic yet";
+                hint: "Select an interface and press Start to capture live CAN traffic.";
+            }
+            if root.live-view == 0 && root.messages.length > 0: VerticalLayout {
                 width: 100%;
                 height: 100%;
                 padding: 4px;
                 spacing: 4px;
 
-                Text { text: "Messages"; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; height: 16px; }
+                TableHeader {
+                    HeaderCell { text: "CAN ID"; width: 80px; }
+                    HeaderCell { text: "Message"; width: 140px; }
+                    HeaderCell { text: "Data"; horizontal-stretch: 1; }
+                    HeaderCell { text: "Count"; width: 60px; }
+                    HeaderCell { text: "Rate"; width: 60px; }
+                }
                 ListView {
                     vertical-stretch: 1;
-                    for row in root.messages: Rectangle {
-                        height: SigmaTheme.row-height;
-                        background: (row.message-name != "" && root.selected-live-message == row.message-name) ? SigmaTheme.surface-raised : transparent;
-                        TouchArea { clicked => { root.selected-live-message = row.message-name; } }
-                        HorizontalLayout {
-                            padding-left: 8px;
-                            spacing: 8px;
-                            Text { text: row.can-id; width: 80px; color: SigmaTheme.accent-amber; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.message-name; width: 140px; color: SigmaTheme.accent-green; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.data-hex; horizontal-stretch: 1; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.count; width: 60px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.rate; width: 60px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
+                    for row in root.messages: TableRow {
+                        selected: row.message-name != "" && root.selected-live-message == row.message-name;
+                        clicked => {
+                            root.selected-live-message =
+                                root.selected-live-message == row.message-name ? "" : row.message-name;
                         }
+                        Cell { text: row.can-id; width: 80px; color: SigmaTheme.accent-amber; }
+                        Cell { text: row.message-name; width: 140px; color: SigmaTheme.accent-green; }
+                        Cell { text: row.data-hex; horizontal-stretch: 1; }
+                        Cell { text: row.count; width: 60px; color: SigmaTheme.text-dim; }
+                        Cell { text: row.rate; width: 60px; color: SigmaTheme.text-dim; }
                     }
                 }
 
                 Rectangle { height: 1px; background: SigmaTheme.border; }
                 Text {
-                    text: root.selected-live-message == "" ? "Signals — click a message to filter" : "Signals — " + root.selected-live-message;
+                    text: root.selected-live-message == ""
+                        ? "Signals — click a message to filter"
+                        : "Signals — " + root.selected-live-message + " (click again to clear)";
                     color: SigmaTheme.text-dim;
                     font-size: SigmaTheme.font-size-small;
                     height: 16px;
                 }
-                ListView {
+                if root.signals.length == 0: EmptyState {
                     vertical-stretch: 1;
-                    for row in root.signals: Rectangle {
-                        property <bool> shown: root.selected-live-message == "" || row.message-name == root.selected-live-message;
-                        height: self.shown ? SigmaTheme.row-height : 0px;
-                        visible: self.shown;
-                        HorizontalLayout {
-                            padding-left: 8px;
-                            spacing: 8px;
-                            Text { text: row.message-name; width: 120px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.signal-name; width: 100px; color: SigmaTheme.accent; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.value; width: 80px; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.unit; width: 40px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: row.min-value + " / " + row.max-value; horizontal-stretch: 1; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
+                    message: "No decoded signals";
+                    hint: "Load a DBC to decode message payloads.";
+                }
+                if root.signals.length > 0: VerticalLayout {
+                    vertical-stretch: 1;
+                    spacing: 4px;
+                    TableHeader {
+                        HeaderCell { text: "Message"; width: 120px; }
+                        HeaderCell { text: "Signal"; width: 100px; }
+                        HeaderCell { text: "Value"; width: 80px; }
+                        HeaderCell { text: "Unit"; width: 40px; }
+                        HeaderCell { text: "Min / Max"; horizontal-stretch: 1; }
+                    }
+                    ListView {
+                        for row in root.signals: TableRow {
+                            property <bool> shown: root.selected-live-message == "" || row.message-name == root.selected-live-message;
+                            hoverable: false;
+                            height: self.shown ? SigmaTheme.row-height : 0px;
+                            visible: self.shown;
+                            Cell { text: row.message-name; width: 120px; color: SigmaTheme.text-dim; }
+                            Cell { text: row.signal-name; width: 100px; color: SigmaTheme.accent; }
+                            Cell { text: row.value; width: 80px; }
+                            Cell { text: row.unit; width: 40px; color: SigmaTheme.text-dim; }
+                            Cell { text: row.min-value + " / " + row.max-value; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
                         }
                     }
                 }
             }
 
             // 2. Bare CAN frames.
-            if root.live-view == 1: ListView {
-                for row in root.frames: Rectangle {
-                    height: SigmaTheme.row-height;
-                    HorizontalLayout {
-                        padding-left: 8px;
-                        spacing: 8px;
-                        Text { text: row.timestamp; width: 100px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.can-id; width: 80px; color: SigmaTheme.accent-amber; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.dlc; width: 30px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.data-hex; horizontal-stretch: 1; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.flags; width: 60px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
+            if root.live-view == 1 && root.frames.length == 0: EmptyState {
+                message: "No frames captured";
+                hint: "Select an interface and press Start to capture live CAN traffic.";
+            }
+            if root.live-view == 1 && root.frames.length > 0: VerticalLayout {
+                padding: 4px;
+                spacing: 4px;
+                TableHeader {
+                    HeaderCell { text: "Timestamp"; width: 100px; }
+                    HeaderCell { text: "CAN ID"; width: 80px; }
+                    HeaderCell { text: "DLC"; width: 30px; }
+                    HeaderCell { text: "Data"; horizontal-stretch: 1; }
+                    HeaderCell { text: "Flags"; width: 60px; }
+                }
+                ListView {
+                    for row in root.frames: TableRow {
+                        hoverable: false;
+                        Cell { text: row.timestamp; width: 100px; color: SigmaTheme.text-dim; }
+                        Cell { text: row.can-id; width: 80px; color: SigmaTheme.accent-amber; }
+                        Cell { text: row.dlc; width: 30px; color: SigmaTheme.text-dim; }
+                        Cell { text: row.data-hex; horizontal-stretch: 1; }
+                        Cell { text: row.flags; width: 60px; color: SigmaTheme.text-dim; }
                     }
                 }
             }
-            if root.live-view == 3: ListView {
-                for row in root.errors: Rectangle {
-                    height: SigmaTheme.row-height;
-                    HorizontalLayout {
-                        padding-left: 8px;
-                        spacing: 8px;
-                        Text { text: row.timestamp; width: 100px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.channel; width: 60px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.error-type; width: 100px; color: SigmaTheme.accent-red; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.details; horizontal-stretch: 1; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        Text { text: row.count; width: 40px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
+
+            // 3. Bus errors.
+            if root.live-view == 2 && root.errors.length == 0: EmptyState {
+                message: "No bus errors";
+                hint: "Error frames seen during capture are listed here.";
+            }
+            if root.live-view == 2 && root.errors.length > 0: VerticalLayout {
+                padding: 4px;
+                spacing: 4px;
+                TableHeader {
+                    HeaderCell { text: "Timestamp"; width: 100px; }
+                    HeaderCell { text: "Channel"; width: 60px; }
+                    HeaderCell { text: "Type"; width: 100px; }
+                    HeaderCell { text: "Details"; horizontal-stretch: 1; }
+                    HeaderCell { text: "Count"; width: 40px; }
+                }
+                ListView {
+                    for row in root.errors: TableRow {
+                        hoverable: false;
+                        Cell { text: row.timestamp; width: 100px; color: SigmaTheme.text-dim; }
+                        Cell { text: row.channel; width: 60px; color: SigmaTheme.text-dim; }
+                        Cell { text: row.error-type; width: 100px; color: SigmaTheme.accent-red; }
+                        Cell { text: row.details; horizontal-stretch: 1; }
+                        Cell { text: row.count; width: 40px; color: SigmaTheme.text-dim; }
                     }
                 }
             }

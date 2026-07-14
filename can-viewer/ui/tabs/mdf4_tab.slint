@@ -1,6 +1,6 @@
 import { ListView, LineEdit } from "std-widgets.slint";
 import { SigmaTheme } from "../theme.slint";
-import { FrameRow, SignalRow, ToolbarButton } from "../widgets/common.slint";
+import { FrameRow, SignalRow, ToolbarButton, Cell, HeaderCell, TableHeader, TableRow, EmptyState } from "../widgets/common.slint";
 
 export component Mdf4Tab inherits Rectangle {
     callback export-mdf4();
@@ -25,7 +25,11 @@ export component Mdf4Tab inherits Rectangle {
 
         HorizontalLayout {
             spacing: 8px;
-            ToolbarButton { label: "Export"; clicked => { root.export-mdf4(); } }
+            ToolbarButton {
+                label: "Export";
+                enabled: root.frames.length > 0;
+                clicked => { root.export-mdf4(); }
+            }
             Rectangle { horizontal-stretch: 1; }
             Text { text: root.frame-count; color: SigmaTheme.text-dim; vertical-alignment: center; }
         }
@@ -41,41 +45,33 @@ export component Mdf4Tab inherits Rectangle {
                 border-width: 1px;
                 border-color: SigmaTheme.border;
 
-                VerticalLayout {
+                if root.frames.length == 0: EmptyState {
+                    message: "No MDF4 file loaded";
+                    hint: "Open a log with the MDF4 button in the header, or pass --mdf4 on the command line.";
+                }
+
+                if root.frames.length > 0: VerticalLayout {
                     padding: 4px;
-                    Rectangle {
-                        height: 28px;
-                        background: SigmaTheme.surface-raised;
-                        HorizontalLayout {
-                            padding-left: 8px;
-                            spacing: 8px;
-                            Text { text: "#"; width: 40px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: "Timestamp"; width: 100px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: "CAN ID"; width: 80px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: "Ch"; width: 30px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: "DLC"; width: 30px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: "Data"; horizontal-stretch: 1; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            Text { text: "Message"; width: 120px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                        }
+                    TableHeader {
+                        HeaderCell { text: "#"; width: 40px; }
+                        HeaderCell { text: "Timestamp"; width: 100px; }
+                        HeaderCell { text: "CAN ID"; width: 80px; }
+                        HeaderCell { text: "Ch"; width: 30px; }
+                        HeaderCell { text: "DLC"; width: 30px; }
+                        HeaderCell { text: "Data"; horizontal-stretch: 1; }
+                        HeaderCell { text: "Message"; width: 120px; }
                     }
                     ListView {
-                        for row[i] in root.frames: Rectangle {
-                            height: SigmaTheme.row-height;
-                            background: i == root.selected-frame-index ? SigmaTheme.accent.transparentize(0.85) : (touch.has-hover ? SigmaTheme.surface-raised : transparent);
-                            touch := TouchArea {
-                                clicked => { root.frame-selected(i); }
-                            }
-                            HorizontalLayout {
-                                padding-left: 8px;
-                                spacing: 8px;
-                                Text { text: row.index; width: 40px; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                Text { text: row.timestamp; width: 100px; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                Text { text: row.can-id; width: 80px; color: SigmaTheme.accent-amber; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                Text { text: row.channel; width: 30px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                Text { text: row.dlc; width: 30px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                Text { text: row.data-hex; horizontal-stretch: 1; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                Text { text: row.message-name; width: 120px; color: SigmaTheme.accent-green; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                            }
+                        for row[i] in root.frames: TableRow {
+                            selected: i == root.selected-frame-index;
+                            clicked => { root.frame-selected(i); }
+                            Cell { text: row.index; width: 40px; }
+                            Cell { text: row.timestamp; width: 100px; }
+                            Cell { text: row.can-id; width: 80px; color: SigmaTheme.accent-amber; }
+                            Cell { text: row.channel; width: 30px; color: SigmaTheme.text-dim; }
+                            Cell { text: row.dlc; width: 30px; color: SigmaTheme.text-dim; }
+                            Cell { text: row.data-hex; horizontal-stretch: 1; }
+                            Cell { text: row.message-name; width: 120px; color: SigmaTheme.accent-green; }
                         }
                     }
                 }
@@ -102,6 +98,7 @@ export component Mdf4Tab inherits Rectangle {
                                 min-height: 28px;
                                 text <=> root.filter-can-id;
                                 placeholder-text: "e.g. 0x123 or comma-separated";
+                                accepted => { root.apply-filters(); }
                             }
                         }
                         VerticalLayout {
@@ -111,6 +108,7 @@ export component Mdf4Tab inherits Rectangle {
                                 min-height: 28px;
                                 text <=> root.filter-message;
                                 placeholder-text: "Message name";
+                                accepted => { root.apply-filters(); }
                             }
                         }
                         VerticalLayout {
@@ -120,6 +118,7 @@ export component Mdf4Tab inherits Rectangle {
                                 min-height: 28px;
                                 text <=> root.filter-data;
                                 placeholder-text: "Data hex filter";
+                                accepted => { root.apply-filters(); }
                             }
                         }
                         HorizontalLayout {
@@ -138,21 +137,39 @@ export component Mdf4Tab inherits Rectangle {
                     border-color: SigmaTheme.border;
                     VerticalLayout {
                         padding: 4px;
+                        spacing: 4px;
                         HorizontalLayout {
                             padding: 4px;
                             Text { text: "Signals"; color: SigmaTheme.text; font-weight: 600; }
                         }
-                        ListView {
-                            for sig in root.signals: Rectangle {
-                                height: SigmaTheme.row-height;
-                                HorizontalLayout {
-                                    padding-left: 8px;
-                                    spacing: 8px;
-                                    Text { text: sig.signal-name; width: 100px; color: SigmaTheme.accent; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                    Text { text: sig.value; width: 80px; color: SigmaTheme.text; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                    Text { text: sig.unit; width: 40px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                    Text { text: sig.raw-value; width: 60px; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
-                                    Text { text: sig.description; horizontal-stretch: 1; color: SigmaTheme.text-dim; font-size: SigmaTheme.font-size-small; vertical-alignment: center; }
+
+                        if root.signals.length == 0: EmptyState {
+                            vertical-stretch: 1;
+                            message: root.frames.length == 0
+                                ? "Decoded signals appear here"
+                                : "Select a frame to decode its signals";
+                            hint: root.frames.length == 0
+                                ? ""
+                                : "Frames decode only when a DBC is loaded.";
+                        }
+
+                        if root.signals.length > 0: VerticalLayout {
+                            vertical-stretch: 1;
+                            TableHeader {
+                                HeaderCell { text: "Signal"; width: 100px; }
+                                HeaderCell { text: "Value"; width: 80px; }
+                                HeaderCell { text: "Unit"; width: 40px; }
+                                HeaderCell { text: "Raw"; width: 60px; }
+                                HeaderCell { text: "Description"; horizontal-stretch: 1; }
+                            }
+                            ListView {
+                                for sig in root.signals: TableRow {
+                                    hoverable: false;
+                                    Cell { text: sig.signal-name; width: 100px; color: SigmaTheme.accent; }
+                                    Cell { text: sig.value; width: 80px; }
+                                    Cell { text: sig.unit; width: 40px; color: SigmaTheme.text-dim; }
+                                    Cell { text: sig.raw-value; width: 60px; color: SigmaTheme.text-dim; }
+                                    Cell { text: sig.description; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
                                 }
                             }
                         }

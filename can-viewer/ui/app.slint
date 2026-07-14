@@ -8,7 +8,7 @@ import { DbcCatalogDialog } from "widgets/dbc_catalog.slint";
 import { FrameRow, SignalRow, LiveMessageRow, LiveSignalRow, LiveFrameRow, LiveErrorRow, DbcMessageRow, DbcSignalRow, DbcNodeRow, DbcAttributeRow, DbcValueDescRow, DbcBitRow, DbcBitBand, DepRow, DbcCatalogRow, FileLoadButton } from "widgets/common.slint";
 
 export component SigmaDiagnostics inherits Window {
-    title: "Diagnostics";
+    title: "CAN Viewer";
     preferred-width: 1280px;
     preferred-height: 800px;
     background: SigmaTheme.background;
@@ -47,7 +47,6 @@ export component SigmaDiagnostics inherits Window {
     in-out property <bool> live-capturing: false;
     in-out property <string> live-capture-status: "Stopped";
     in-out property <string> live-stats-text: "";
-    in-out property <bool> live-linux-only: true;
     in-out property <[LiveMessageRow]> live-messages;
     in-out property <[LiveSignalRow]> live-signals;
     in-out property <[LiveFrameRow]> live-frames;
@@ -236,7 +235,6 @@ export component SigmaDiagnostics inherits Window {
                 capturing <=> root.live-capturing;
                 capture-status <=> root.live-capture-status;
                 stats-text <=> root.live-stats-text;
-                linux-only <=> root.live-linux-only;
                 messages <=> root.live-messages;
                 signals <=> root.live-signals;
                 frames <=> root.live-frames;
@@ -314,6 +312,34 @@ export component SigmaDiagnostics inherits Window {
                 direct-deps: root.about-direct-deps;
             }
         }
+
+            // Status bar: last action result / error on the left, version right.
+            status-bar := Rectangle {
+                height: 24px;
+                width: 100%;
+                background: SigmaTheme.surface-raised;
+                border-radius: 4px;
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    spacing: 8px;
+                    Text {
+                        text: root.status-text;
+                        color: SigmaTheme.text-dim;
+                        font-size: SigmaTheme.font-size-small;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        horizontal-stretch: 1;
+                    }
+                    Text {
+                        text: "v" + root.version-text;
+                        color: SigmaTheme.text-dim;
+                        font-size: SigmaTheme.font-size-small;
+                        vertical-alignment: center;
+                        opacity: 0.7;
+                    }
+                }
+            }
         }
 
         DbcCatalogDialog {

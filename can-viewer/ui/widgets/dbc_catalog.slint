@@ -84,6 +84,7 @@ export component DbcCatalogDialog inherits Rectangle {
                                     color: SigmaTheme.text;
                                     horizontal-stretch: 1;
                                     vertical-alignment: center;
+                                    overflow: elide;
                                 }
                                 Text {
                                     text: row.filename;
@@ -91,6 +92,7 @@ export component DbcCatalogDialog inherits Rectangle {
                                     width: 140px;
                                     font-size: SigmaTheme.font-size-small;
                                     vertical-alignment: center;
+                                    overflow: elide;
                                 }
                                 Text {
                                     text: row.size-text;
@@ -109,10 +111,12 @@ export component DbcCatalogDialog inherits Rectangle {
                     spacing: 8px;
                     ToolbarButton {
                         label: "Refresh";
+                        enabled: !root.busy;
                         clicked => { root.refresh(); }
                     }
                     ToolbarButton {
                         label: "Load";
+                        enabled: !root.busy && root.selected-index >= 0;
                         clicked => { root.load-selected(); }
                     }
                     Rectangle { horizontal-stretch: 1; }

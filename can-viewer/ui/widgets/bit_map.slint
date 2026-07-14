@@ -8,7 +8,8 @@ component ByteBitStrip inherits VerticalLayout {
 
     spacing: 1px;
     alignment: start;
-    width: 48px + 8 * 18px + 7 * 2px;
+    // 8 cells of 18px with 2px gaps; the label sits above, not beside.
+    width: 8 * 18px + 7 * 2px;
 
     Text {
         text: root.byte-data.byte-label;

@@ -51,9 +51,6 @@ impl LiveController {
 
     /// Hook the live tab callbacks.
     pub fn wire(self: Rc<Self>, ui: &SigmaDiagnostics) {
-        #[cfg(not(target_os = "linux"))]
-        ui.set_live_linux_only(false);
-
         self.refresh_interfaces();
 
         let this = self.clone();
