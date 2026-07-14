@@ -150,6 +150,8 @@ Builds on the sigma-diagnostics domain crate and reuses can-viewer's analysis se
 
 Key Sigma libraries: dbc-rs (DBC parsing/editing), mdf4-rs (ASAM MDF4 I/O).
 
+Made with Slint (https://slint.dev) — distributed under the Slint Royalty-Free License.
+
 See CONTRIBUTORS.md in the source tree for additional acknowledgements."#;
 
     let copyright = "Copyright © 2026 diagnostics contributors and Sigma Tactical Group.";
