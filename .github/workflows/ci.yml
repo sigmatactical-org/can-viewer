@@ -53,6 +53,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: embedded/sigma-diagnostics
+          add-rust-environment-hash-key: false
 
       - name: Install Slint system dependencies
         run: |
@@ -89,6 +90,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: embedded/sigma-diagnostics
+          add-rust-environment-hash-key: false
 
       - name: Install Slint system dependencies
         run: |
@@ -125,6 +127,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: embedded/sigma-diagnostics
+          add-rust-environment-hash-key: false
 
       - name: Install Slint system dependencies
         run: |
@@ -177,6 +180,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: embedded/sigma-diagnostics
+          add-rust-environment-hash-key: false
 
       - name: Install Slint system dependencies
         run: |
