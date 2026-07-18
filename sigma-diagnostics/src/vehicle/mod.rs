@@ -3,6 +3,7 @@
 //! Protocol PDUs for maintenance/settings writes are defined with Wingman firmware;
 //! this module ships stubs and M7 draft decode for live diagnosis.
 
+mod ai;
 mod diagnosis;
 mod logs;
 mod m7;
@@ -13,7 +14,11 @@ mod session;
 mod settings;
 mod transport;
 
-pub use diagnosis::{DiagnosisSnapshot, VitalSignal};
+pub use ai::{
+    build_diagnosis_advisor, AiConfig, DiagnosisAdvisor, DiagnosisReading, ModelAdvisor,
+    ReadingSeverity, ReadingSource, RuleBasedAdvisor,
+};
+pub use diagnosis::{AnomalyRow, DiagnosisSnapshot, VitalSignal};
 pub use logs::{request_log_export, LogExportRequest};
 pub use m7::{load_m7_draft_dbc, M7_DRAFT_DBC, M7_DRAFT_DBC_NAME};
 pub use maintenance::{MaintenanceAction, MaintenanceService, StubMaintenanceService};

@@ -1,11 +1,18 @@
-import { ListView } from "std-widgets.slint";
+import { ListView, LineEdit, ScrollView } from "std-widgets.slint";
 import { SigmaTheme } from "theme.slint";
-import { StatusChip, Cell, HeaderCell, TableHeader, TableRow, EmptyState } from "widgets/common.slint";
+import { StatusChip, ToolbarButton, Cell, HeaderCell, TableHeader, TableRow, EmptyState } from "widgets/common.slint";
 
 export struct VitalRow {
     name: string,
     value: string,
     unit: string,
+}
+
+export struct AnomalyRow {
+    time: string,
+    severity: string,
+    message: string,
+    active: bool,
 }
 
 component VitalCard inherits Rectangle {
@@ -48,6 +55,26 @@ export component DiagnosisTab inherits Rectangle {
     in property <string> frame-count: "0";
     in property <[VitalRow]> vitals;
 
+    // —— Plain-language read (AI) ——
+    in property <string> ai-severity: "";
+    in property <string> ai-headline: "";
+    in property <string> ai-body: "";
+    in property <string> ai-source: "";
+    in property <string> ai-status: "";
+    in property <bool> ai-busy: false;
+    in-out property <string> ai-question: "";
+    callback ai-explain();
+
+    // —— Streaming anomaly detection ——
+    in property <[AnomalyRow]> anomalies;
+    in property <string> worst-anomaly: "";
+
+    private property <brush> sev-color:
+        root.ai-severity == "CRITICAL" ? SigmaTheme.accent-red
+        : root.ai-severity == "WARNING" ? SigmaTheme.accent-amber
+        : root.ai-severity == "OK" ? SigmaTheme.accent-green
+        : SigmaTheme.accent;
+
     background: SigmaTheme.background;
 
     VerticalLayout {
@@ -67,6 +94,13 @@ export component DiagnosisTab inherits Rectangle {
                 value: root.status-text;
                 value-color: root.connected ? SigmaTheme.accent-green : SigmaTheme.text-dim;
             }
+            if root.worst-anomaly != "": StatusChip {
+                label: "Worst active";
+                value: root.worst-anomaly;
+                value-color: root.worst-anomaly == "CRITICAL"
+                    ? SigmaTheme.accent-red
+                    : SigmaTheme.accent-amber;
+            }
             Rectangle { horizontal-stretch: 1; }
             Text {
                 text: "Frames " + root.frame-count;
@@ -85,42 +119,224 @@ export component DiagnosisTab inherits Rectangle {
             VitalCard { label: "Gear"; value: root.gear; }
             VitalCard { label: "Side stand"; value: root.side-stand; }
             VitalCard { label: "Mode"; value: root.performance-mode; }
+            Rectangle { horizontal-stretch: 1; }
         }
 
-        Text {
-            text: "Decoded signals";
-            color: SigmaTheme.text;
-            font-weight: 600;
-        }
-
-        Rectangle {
+        HorizontalLayout {
+            spacing: 10px;
             vertical-stretch: 1;
-            background: SigmaTheme.surface;
-            border-radius: 4px;
-            border-width: 1px;
-            border-color: SigmaTheme.border;
 
-            if root.vitals.length == 0: EmptyState {
-                message: root.connected ? "Waiting for telemetry…" : "Not connected";
-                hint: root.connected
-                    ? "Decoded signals appear here as frames arrive."
-                    : "Connect to the vehicle from the Connect tab to see live vitals.";
+            // —— Left: decoded signals table (unchanged behaviour) ——
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 6px;
+
+                Text {
+                    text: "Decoded signals";
+                    color: SigmaTheme.text;
+                    font-weight: 600;
+                }
+
+                Rectangle {
+                    vertical-stretch: 1;
+                    background: SigmaTheme.surface;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: SigmaTheme.border;
+
+                    if root.vitals.length == 0: EmptyState {
+                        message: root.connected ? "Waiting for telemetry…" : "Not connected";
+                        hint: root.connected
+                            ? "Decoded signals appear here as frames arrive."
+                            : "Connect to the vehicle from the Connect tab to see live vitals.";
+                    }
+
+                    if root.vitals.length > 0: VerticalLayout {
+                        padding: 4px;
+                        spacing: 4px;
+                        TableHeader {
+                            HeaderCell { text: "Signal"; horizontal-stretch: 2; }
+                            HeaderCell { text: "Value"; width: 100px; }
+                            HeaderCell { text: "Unit"; width: 60px; }
+                        }
+                        ListView {
+                            for row in root.vitals: TableRow {
+                                hoverable: false;
+                                Cell { text: row.name; horizontal-stretch: 2; }
+                                Cell { text: row.value; width: 100px; color: SigmaTheme.accent; }
+                                Cell { text: row.unit; width: 60px; color: SigmaTheme.text-dim; }
+                            }
+                        }
+                    }
+                }
             }
 
-            if root.vitals.length > 0: VerticalLayout {
-                padding: 4px;
-                spacing: 4px;
-                TableHeader {
-                    HeaderCell { text: "Signal"; horizontal-stretch: 2; }
-                    HeaderCell { text: "Value"; width: 100px; }
-                    HeaderCell { text: "Unit"; width: 60px; }
+            // —— Right: plain-language read ——
+            VerticalLayout {
+                width: 380px;
+                spacing: 10px;
+
+                Rectangle {
+                vertical-stretch: 1;
+                background: SigmaTheme.surface;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: SigmaTheme.border;
+
+                VerticalLayout {
+                    padding: 10px;
+                    spacing: 8px;
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text {
+                            text: "Plain-language read";
+                            color: SigmaTheme.text;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        if root.ai-source != "": Text {
+                            text: root.ai-source;
+                            color: SigmaTheme.text-dim;
+                            font-size: SigmaTheme.font-size-small;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        height: root.ai-severity != "" || root.ai-status != "" ? 22px : 0px;
+                        if root.ai-severity != "": Rectangle {
+                            width: sev-text.preferred-width + 16px;
+                            background: root.sev-color.transparentize(0.85);
+                            border-radius: 4px;
+                            border-width: 1px;
+                            border-color: root.sev-color;
+                            sev-text := Text {
+                                text: root.ai-severity;
+                                color: root.sev-color;
+                                font-size: SigmaTheme.font-size-small;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                                horizontal-alignment: center;
+                            }
+                        }
+                        if root.ai-status != "": Text {
+                            text: root.ai-status;
+                            color: SigmaTheme.text-dim;
+                            font-size: SigmaTheme.font-size-small;
+                            vertical-alignment: center;
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+
+                    if root.ai-headline != "": Text {
+                        text: root.ai-headline;
+                        color: SigmaTheme.text;
+                        font-weight: 600;
+                        wrap: word-wrap;
+                    }
+
+                    Rectangle {
+                        vertical-stretch: 1;
+                        background: SigmaTheme.background;
+                        border-radius: 4px;
+                        border-width: 1px;
+                        border-color: SigmaTheme.border;
+                        ScrollView {
+                            VerticalLayout {
+                                padding: 8px;
+                                alignment: start;
+                                Text {
+                                    text: root.ai-body;
+                                    color: SigmaTheme.text;
+                                    font-size: SigmaTheme.font-size-small;
+                                    wrap: word-wrap;
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 6px;
+                        LineEdit {
+                            horizontal-stretch: 1;
+                            placeholder-text: "Ask about a signal or code…";
+                            text <=> root.ai-question;
+                            font-size: SigmaTheme.font-size-small;
+                            accepted => { root.ai-explain(); }
+                        }
+                        ToolbarButton {
+                            label: root.ai-busy ? "…" : "Explain";
+                            enabled: !root.ai-busy;
+                            clicked => { root.ai-explain(); }
+                        }
+                    }
                 }
-                ListView {
-                    for row in root.vitals: TableRow {
-                        hoverable: false;
-                        Cell { text: row.name; horizontal-stretch: 2; }
-                        Cell { text: row.value; width: 100px; color: SigmaTheme.accent; }
-                        Cell { text: row.unit; width: 60px; color: SigmaTheme.text-dim; }
+                }
+
+                // —— Streaming anomaly events (same detectors as the bike) ——
+                Rectangle {
+                    height: 190px;
+                    background: SigmaTheme.surface;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: SigmaTheme.border;
+
+                    VerticalLayout {
+                        padding: 10px;
+                        spacing: 6px;
+
+                        Text {
+                            text: "Anomalies";
+                            color: SigmaTheme.text;
+                            font-weight: 700;
+                        }
+
+                        if root.anomalies.length == 0: EmptyState {
+                            message: "No anomalies detected";
+                            hint: "Deterministic detectors run on WiFi telemetry and replayed sessions (not the raw SocketCAN path).";
+                        }
+
+                        if root.anomalies.length > 0: ListView {
+                            for row in root.anomalies: TableRow {
+                                hoverable: false;
+                                Cell {
+                                    text: row.time;
+                                    width: 84px;
+                                    color: SigmaTheme.text-dim;
+                                }
+                                Rectangle {
+                                    width: 74px;
+                                    height: 18px;
+                                    background: (row.severity == "CRITICAL"
+                                        ? SigmaTheme.accent-red
+                                        : SigmaTheme.accent-amber)
+                                        .transparentize(row.active ? 0.8 : 0.92);
+                                    border-radius: 4px;
+                                    Text {
+                                        text: row.severity;
+                                        color: row.severity == "CRITICAL"
+                                            ? SigmaTheme.accent-red
+                                            : SigmaTheme.accent-amber;
+                                        font-size: 10px;
+                                        font-weight: 700;
+                                        horizontal-alignment: center;
+                                        vertical-alignment: center;
+                                        width: 100%;
+                                        height: 100%;
+                                        opacity: row.active ? 1.0 : 0.55;
+                                    }
+                                }
+                                Cell {
+                                    text: row.message;
+                                    horizontal-stretch: 1;
+                                    opacity: row.active ? 1.0 : 0.55;
+                                }
+                            }
+                        }
                     }
                 }
             }

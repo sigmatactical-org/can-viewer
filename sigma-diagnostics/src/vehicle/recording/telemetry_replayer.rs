@@ -73,15 +73,24 @@ impl TelemetryReplayer {
         if self.index >= self.lines.len() {
             return false;
         }
+        let _ = self.step_message();
+        true
+    }
+
+    /// Advance one frame and return the parsed message (state already
+    /// applied), or `None` at end of session / on an unparseable line.
+    pub fn step_message(&mut self) -> Option<Message> {
+        if self.index >= self.lines.len() {
+            return None;
+        }
         let line = &self.lines[self.index];
         self.index += 1;
-        if let Ok(msg) = Message::parse_validated(line) {
-            self.seq = msg.seq;
-            if let Some(data) = msg.vss_data() {
-                self.state.apply_vss_map(data);
-            }
+        let msg = Message::parse_validated(line).ok()?;
+        self.seq = msg.seq;
+        if let Some(data) = msg.vss_data() {
+            self.state.apply_vss_map(data);
         }
-        true
+        Some(msg)
     }
 
     /// Rewind to the start of the session.

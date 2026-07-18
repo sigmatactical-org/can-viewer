@@ -1,5 +1,6 @@
 //! Mechanic Slint controllers.
 
+mod ai;
 mod analysis;
 mod vehicle;
 
@@ -28,6 +29,10 @@ pub fn run(state: Arc<AppState>) -> Result<(), slint::PlatformError> {
     vehicle.refresh_interfaces();
     vehicle.refresh_settings();
     vehicle.init_ota_labels();
+
+    let ai = Rc::new(ai::AiController::new(state.clone(), ui.as_weak()));
+    ai::AiController::wire(ai.clone(), &ui);
+    ai.init();
 
     let ui_weak = ui.as_weak();
     let vehicle_poll = vehicle.clone();

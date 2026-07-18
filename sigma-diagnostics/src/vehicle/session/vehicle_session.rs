@@ -1,12 +1,14 @@
 use std::path::PathBuf;
 
 use parking_lot::Mutex;
+use sigma_racer_telemetry::anomaly::AnomalyEngine;
+use sigma_racer_telemetry::parse_ts_millis;
 use sigma_racer_telemetry::TcpTelemetryClient;
 use sigma_racer_telemetry::VehicleState;
 
 use crate::capture::{self, CaptureSession};
 use crate::state::DiagnosticsState;
-use crate::vehicle::diagnosis::DiagnosisSnapshot;
+use crate::vehicle::diagnosis::{AnomalyRow, DiagnosisSnapshot};
 use crate::vehicle::m7;
 use crate::vehicle::recording::{new_session_path, TelemetryRecorder, TelemetryReplayer};
 use crate::vehicle::transport::VehicleTransport;
@@ -16,6 +18,9 @@ use super::{VehicleLinkConfig, VehicleSessionStatus};
 fn capture_log_path() -> PathBuf {
     std::env::temp_dir().join("sigma-racer-mechanic-capture.mf4")
 }
+
+/// Newest anomaly events kept for the diagnosis panel.
+const ANOMALY_LOG_CAP: usize = 200;
 
 /// Active vehicle link for Mechanic (SocketCAN or Wingman WiFi telemetry).
 pub struct VehicleSession {
@@ -29,6 +34,9 @@ pub struct VehicleSession {
     recorder: Mutex<Option<TelemetryRecorder>>,
     replayer: Mutex<Option<TelemetryReplayer>>,
     recording_path: Mutex<Option<PathBuf>>,
+    /// Shop-side detector engine (same detectors as the bike daemon).
+    anomalies: Mutex<AnomalyEngine>,
+    anomaly_log: Mutex<Vec<AnomalyRow>>,
 }
 
 impl Default for VehicleSession {
@@ -51,7 +59,47 @@ impl VehicleSession {
             recorder: Mutex::new(None),
             replayer: Mutex::new(None),
             recording_path: Mutex::new(None),
+            anomalies: Mutex::new(AnomalyEngine::sigma_defaults()),
+            anomaly_log: Mutex::new(Vec::new()),
         }
+    }
+
+    fn reset_anomalies(&self) {
+        *self.anomalies.lock() = AnomalyEngine::sigma_defaults();
+        self.anomaly_log.lock().clear();
+    }
+
+    /// Feed one telemetry message through the shop-side detector engine:
+    /// bike-raised `Event` messages are merged idempotently; state messages
+    /// run the local detectors with the message's own timestamp.
+    fn observe_message(&self, msg: &sigma_racer_telemetry::Message, state: &VehicleState) {
+        let mut engine = self.anomalies.lock();
+        let mut log = self.anomaly_log.lock();
+        if msg.msg == "Event" {
+            if let Some(ev) = engine.ingest_event(msg) {
+                push_row(&mut log, AnomalyRow::from_event(&ev, "bike"));
+            }
+        } else if let Some(ts) = parse_ts_millis(&msg.ts) {
+            for ev in engine.observe(ts, state) {
+                push_row(&mut log, AnomalyRow::from_event(ev, "shop"));
+            }
+        }
+    }
+
+    /// Copy the anomaly log and worst-active severity into a snapshot,
+    /// refreshing each row's `active` flag from the engine.
+    fn fill_anomalies(&self, snap: &mut DiagnosisSnapshot) {
+        let engine = self.anomalies.lock();
+        let active_ids: Vec<&str> = engine.active().map(|slot| slot.id).collect();
+        let mut rows = self.anomaly_log.lock().clone();
+        for row in &mut rows {
+            row.active = active_ids.contains(&row.id.as_str());
+        }
+        snap.worst_anomaly = engine
+            .worst_active()
+            .map(|(_, sev)| sev.label().to_string())
+            .unwrap_or_default();
+        snap.anomalies = rows;
     }
 
     /// Current link status.
@@ -86,6 +134,7 @@ impl VehicleSession {
         *self.last_error.lock() = None;
         self.stop_replay();
         self.teardown_links(state);
+        self.reset_anomalies();
 
         if cfg.use_m7_draft_dbc {
             m7::load_m7_draft_dbc(state)?;
@@ -166,6 +215,7 @@ impl VehicleSession {
         *self.replayer.lock() = Some(replayer);
         *self.status.lock() = VehicleSessionStatus::Replaying;
         *self.last_error.lock() = None;
+        self.reset_anomalies();
         Ok(())
     }
 
@@ -212,6 +262,8 @@ impl VehicleSession {
     }
 
     fn poll_socketcan(&self) -> DiagnosisSnapshot {
+        // Detectors need VehicleState, which this DBC-capture path does not
+        // build; anomaly detection covers the WiFi and replay paths in v1.
         let capture = self.capture.lock();
         let Some(session) = capture.as_ref() else {
             return DiagnosisSnapshot::disconnected("No capture session");
@@ -242,12 +294,16 @@ impl VehicleSession {
             if let Some(data) = msg.vss_data() {
                 state.apply_vss_map(data);
             }
+            self.observe_message(&msg, &state);
             if let Some(rec) = recorder.as_mut() {
                 let _ = rec.write_message(&msg);
             }
         }
 
-        DiagnosisSnapshot::from_vehicle_state(&state, true, *seq, "Receiving telemetry (WiFi)")
+        let mut snap =
+            DiagnosisSnapshot::from_vehicle_state(&state, true, *seq, "Receiving telemetry (WiFi)");
+        self.fill_anomalies(&mut snap);
+        snap
     }
 
     fn poll_replay(&self) -> DiagnosisSnapshot {
@@ -256,24 +312,39 @@ impl VehicleSession {
             return DiagnosisSnapshot::disconnected("Replay stopped");
         };
 
-        if !replayer.step() {
-            return DiagnosisSnapshot::from_vehicle_state(
+        let stepped = replayer.step_message();
+        if let Some(msg) = &stepped {
+            self.observe_message(msg, replayer.state());
+        }
+
+        let mut snap = if stepped.is_none() && replayer.finished() {
+            DiagnosisSnapshot::from_vehicle_state(
                 replayer.state(),
                 false,
                 replayer.seq(),
                 "Replay finished",
-            );
-        }
-
-        DiagnosisSnapshot::from_vehicle_state(
-            replayer.state(),
-            true,
-            replayer.seq(),
-            &format!(
-                "Replaying {}/{}",
-                replayer.position(),
-                replayer.total_lines()
-            ),
-        )
+            )
+        } else {
+            DiagnosisSnapshot::from_vehicle_state(
+                replayer.state(),
+                true,
+                replayer.seq(),
+                &format!(
+                    "Replaying {}/{}",
+                    replayer.position(),
+                    replayer.total_lines()
+                ),
+            )
+        };
+        self.fill_anomalies(&mut snap);
+        snap
     }
+}
+
+/// Append with a bounded log: oldest rows fall off first.
+fn push_row(log: &mut Vec<AnomalyRow>, row: AnomalyRow) {
+    if log.len() >= ANOMALY_LOG_CAP {
+        log.remove(0);
+    }
+    log.push(row);
 }

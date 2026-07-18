@@ -1,7 +1,7 @@
 use crate::dto::{LiveCaptureDisplay, LiveSignalRow};
 use sigma_racer_telemetry::VehicleState;
 
-use super::VitalSignal;
+use super::{AnomalyRow, VitalSignal};
 
 /// Aggregated diagnosis view for the shop UI.
 #[derive(Debug, Clone, Default)]
@@ -17,6 +17,10 @@ pub struct DiagnosisSnapshot {
     pub performance_mode: String,
     pub vitals: Vec<VitalSignal>,
     pub status: String,
+    /// Streaming anomaly events (newest last), filled by the session.
+    pub anomalies: Vec<AnomalyRow>,
+    /// Severity label of the worst active alert ("" when quiet).
+    pub worst_anomaly: String,
 }
 
 impl DiagnosisSnapshot {
@@ -105,6 +109,8 @@ impl DiagnosisSnapshot {
                 },
             ],
             status: status.to_string(),
+            anomalies: Vec::new(),
+            worst_anomaly: String::new(),
         }
     }
 

@@ -1,7 +1,7 @@
 //! Vehicle Connect / Diagnosis / Maintenance / Settings / Updates / Logs.
 
 use crate::state::AppState;
-use crate::{SettingRow, SigmaRacerMechanic, VitalRow};
+use crate::{AnomalyRow, SettingRow, SigmaRacerMechanic, VitalRow};
 use sigma_diagnostics::{
     default_sessions_dir, fetch_channel_latest, list_can_interfaces, request_log_export,
     LogExportRequest, MaintenanceAction, MaintenanceService, OtaConfig, SettingsService,
@@ -234,6 +234,21 @@ impl VehicleController {
             })
             .collect();
         ui.set_diag_vitals(ModelRc::new(VecModel::from(rows)));
+
+        // Newest-first for the anomalies panel.
+        let anomaly_rows: Vec<AnomalyRow> = snap
+            .anomalies
+            .iter()
+            .rev()
+            .map(|a| AnomalyRow {
+                time: a.ts.clone().into(),
+                severity: a.severity_label.clone().into(),
+                message: a.message.clone().into(),
+                active: a.active,
+            })
+            .collect();
+        ui.set_diag_anomalies(ModelRc::new(VecModel::from(anomaly_rows)));
+        ui.set_diag_worst_anomaly(snap.worst_anomaly.clone().into());
 
         if !snap.connected {
             ui.set_vehicle_status_label(

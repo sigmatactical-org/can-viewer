@@ -42,10 +42,11 @@ pub use updates::{
 };
 
 pub use vehicle::{
-    default_sessions_dir, fetch_channel_latest, load_m7_draft_dbc, new_session_path,
-    request_log_export, ChannelRelease, DiagnosisSnapshot, LogExportRequest, MaintenanceAction,
-    MaintenanceService, OtaConfig, SettingsService, StubMaintenanceService, StubSettingsService,
-    TelemetryRecorder, TelemetryReplayer, VehicleLinkConfig, VehicleSession, VehicleSessionStatus,
-    VehicleSetting, VehicleTransport, VitalSignal, DEFAULT_WIFI_PORT, M7_DRAFT_DBC,
-    M7_DRAFT_DBC_NAME,
+    build_diagnosis_advisor, default_sessions_dir, fetch_channel_latest, load_m7_draft_dbc,
+    new_session_path, request_log_export, AiConfig, AnomalyRow, ChannelRelease, DiagnosisAdvisor,
+    DiagnosisReading, DiagnosisSnapshot, LogExportRequest, MaintenanceAction, MaintenanceService,
+    ModelAdvisor, OtaConfig, ReadingSeverity, ReadingSource, RuleBasedAdvisor, SettingsService,
+    StubMaintenanceService, StubSettingsService, TelemetryRecorder, TelemetryReplayer,
+    VehicleLinkConfig, VehicleSession, VehicleSessionStatus, VehicleSetting, VehicleTransport,
+    VitalSignal, DEFAULT_WIFI_PORT, M7_DRAFT_DBC, M7_DRAFT_DBC_NAME,
 };

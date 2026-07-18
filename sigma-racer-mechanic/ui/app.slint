@@ -9,13 +9,13 @@ import { DbcCatalogDialog } from "widgets/dbc_catalog.slint";
 import { FrameRow, SignalRow, LiveMessageRow, LiveSignalRow, LiveFrameRow, LiveErrorRow, DbcMessageRow, DbcSignalRow, DbcNodeRow, DbcAttributeRow, DbcValueDescRow, DbcBitRow, DbcBitBand, DepRow, DbcCatalogRow } from "widgets/common.slint";
 
 import { ConnectTab } from "tabs/connect_tab.slint";
-import { DiagnosisTab, VitalRow } from "tabs/diagnosis_tab.slint";
+import { DiagnosisTab, VitalRow, AnomalyRow } from "tabs/diagnosis_tab.slint";
 import { MaintenanceTab } from "tabs/maintenance_tab.slint";
 import { SettingsTab, SettingRow } from "tabs/settings_tab.slint";
 import { UpdatesTab } from "tabs/updates_tab.slint";
 import { LogsTab } from "tabs/logs_tab.slint";
 
-export { VitalRow, SettingRow }
+export { VitalRow, AnomalyRow, SettingRow }
 
 // Tab indices:
 // 0 Connect, 1 Diagnosis, 2 Maintenance, 3 Settings, 4 Updates, 5 Logs,
@@ -57,6 +57,18 @@ export component SigmaRacerMechanic inherits Window {
     in-out property <string> diag-mode: "—";
     in-out property <string> diag-frame-count: "0";
     in-out property <[VitalRow]> diag-vitals;
+    in-out property <[AnomalyRow]> diag-anomalies;
+    in-out property <string> diag-worst-anomaly: "";
+
+    // —— AI plain-language read (Diagnosis tab) ——
+    callback ai-explain();
+    in-out property <string> ai-question: "";
+    in-out property <string> ai-severity: "";
+    in-out property <string> ai-headline: "";
+    in-out property <string> ai-body: "";
+    in-out property <string> ai-source: "";
+    in-out property <string> ai-status: "";
+    in-out property <bool> ai-busy: false;
 
     callback maintenance-reset-service();
     callback maintenance-reset-oil();
@@ -294,6 +306,16 @@ export component SigmaRacerMechanic inherits Window {
                     performance-mode: root.diag-mode;
                     frame-count: root.diag-frame-count;
                     vitals: root.diag-vitals;
+                    anomalies: root.diag-anomalies;
+                    worst-anomaly: root.diag-worst-anomaly;
+                    ai-severity: root.ai-severity;
+                    ai-headline: root.ai-headline;
+                    ai-body: root.ai-body;
+                    ai-source: root.ai-source;
+                    ai-status: root.ai-status;
+                    ai-busy: root.ai-busy;
+                    ai-question <=> root.ai-question;
+                    ai-explain => { root.ai-explain(); }
                 }
                 if root.active-tab == 2: MaintenanceTab {
                     width: 100%; height: 100%;
