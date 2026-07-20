@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Instant;
 
 use dbc_rs::FastDbc;
+use sigma_racer_telemetry::VehicleState;
 
 use crate::dto::{
     CanFrameDto, CaptureStatsDto, LiveCaptureDisplay, LiveCaptureUpdate, LiveErrorRow,
@@ -63,6 +64,12 @@ pub struct LiveCaptureState {
     last_rate_update: Instant,
     last_frame_count: u64,
     frame_rate: f64,
+
+    // VehicleState rebuilt from decoded signals via the Sigma frame map, so
+    // the SocketCAN path feeds the shop-side anomaly detectors. Stays at idle
+    // (and is not surfaced) until at least one signal maps.
+    vehicle_state: VehicleState,
+    vss_updates: u64,
 }
 
 impl LiveCaptureState {
@@ -93,7 +100,16 @@ impl LiveCaptureState {
             last_rate_update: Instant::now(),
             last_frame_count: 0,
             frame_rate: 0.0,
+            vehicle_state: VehicleState::idle(),
+            vss_updates: 0,
         }
+    }
+
+    /// The VehicleState rebuilt from mapped signals, once any signal has
+    /// mapped through the Sigma frame map; `None` otherwise (e.g. a non-Sigma
+    /// DBC is loaded).
+    pub fn vehicle_state(&self) -> Option<&VehicleState> {
+        (self.vss_updates > 0).then_some(&self.vehicle_state)
     }
 
     /// Process a CAN error frame.
@@ -215,9 +231,21 @@ impl LiveCaptureState {
         let message_name = msg.name();
 
         // Update signals from buffer (zero-allocation key lookup)
+        let mut mapped_any = false;
         for (i, signal) in msg.signals().iter().enumerate().take(count) {
             let value = self.decode_buffer[i];
             let key: SignalKey = (can_id, i);
+
+            // Bridge to VehicleState: map (message, signal) -> VSS point and
+            // apply it. Unmapped signals translate to nothing.
+            if let Some(point) = crate::vss_frame_map::sigma_vss_map()
+                .translate(message_name, &(signal.name(), value))
+            {
+                let json: serde_json::Value = (&point.value).into();
+                self.vehicle_state.apply_vss(point.path.as_str(), &json);
+                self.vss_updates += 1;
+                mapped_any = true;
+            }
 
             if let Some(entry) = self.signals.get_mut(&key) {
                 entry.value = value;
@@ -252,6 +280,11 @@ impl LiveCaptureState {
                     },
                 );
             }
+        }
+
+        // Recompute derived fields (at_redline, ...) once per frame.
+        if mapped_any {
+            self.vehicle_state.refresh_derived();
         }
     }
 
@@ -568,6 +601,7 @@ impl LiveCaptureState {
             signal_count: self.signals.len() as u32,
             frame_count: self.recent_frames.len(),
             error_count: self.total_error_count as u32,
+            vehicle_state: self.vehicle_state().cloned(),
         }
     }
 

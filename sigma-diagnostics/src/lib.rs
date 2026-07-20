@@ -15,6 +15,7 @@ pub mod mdf;
 pub mod state;
 pub mod updates;
 pub mod vehicle;
+pub mod vss_frame_map;
 
 pub use state::DiagnosticsState;
 

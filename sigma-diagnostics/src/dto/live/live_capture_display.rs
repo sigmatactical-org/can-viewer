@@ -1,3 +1,5 @@
+use sigma_racer_telemetry::VehicleState;
+
 use super::{
     CaptureStatsDto, LiveErrorRow, LiveFrameRow, LiveMessageRow, LiveSignalRow, StatsHtml,
 };
@@ -15,4 +17,7 @@ pub struct LiveCaptureDisplay {
     pub signal_count: u32,
     pub frame_count: usize,
     pub error_count: u32,
+    /// VehicleState rebuilt from mapped signals (SocketCAN → VSS bridge);
+    /// `None` when no signal mapped (e.g. a non-Sigma DBC is loaded).
+    pub vehicle_state: Option<VehicleState>,
 }

@@ -262,20 +262,42 @@ impl VehicleSession {
     }
 
     fn poll_socketcan(&self) -> DiagnosisSnapshot {
-        // Detectors need VehicleState, which this DBC-capture path does not
-        // build; anomaly detection covers the WiFi and replay paths in v1.
         let capture = self.capture.lock();
         let Some(session) = capture.as_ref() else {
             return DiagnosisSnapshot::disconnected("No capture session");
         };
 
         match session.poll_update() {
+            // Sigma DBC: the capture rebuilt VehicleState from mapped signals,
+            // so the shop-side detectors run here too (parity with WiFi).
+            Some(display) if display.vehicle_state.is_some() => {
+                let state = display.vehicle_state.as_ref().unwrap();
+                self.observe_state(state, now_millis());
+                let mut snap = DiagnosisSnapshot::from_vehicle_state(
+                    state,
+                    true,
+                    display.stats.frame_count,
+                    "Receiving telemetry (SocketCAN)",
+                );
+                self.fill_anomalies(&mut snap);
+                snap
+            }
+            // Non-Sigma DBC (no mapped signals): raw frame/signal display only.
             Some(display) => DiagnosisSnapshot::from_live_display(&display, true),
             None => DiagnosisSnapshot {
                 connected: true,
                 status: "Waiting for frames".into(),
                 ..DiagnosisSnapshot::default()
             },
+        }
+    }
+
+    /// Run the shop-side detectors over a rebuilt state at `ts_ms`.
+    fn observe_state(&self, state: &VehicleState, ts_ms: i64) {
+        let mut engine = self.anomalies.lock();
+        let mut log = self.anomaly_log.lock();
+        for ev in engine.observe(ts_ms, state) {
+            push_row(&mut log, AnomalyRow::from_event(ev, "shop"));
         }
     }
 
@@ -339,6 +361,14 @@ impl VehicleSession {
         self.fill_anomalies(&mut snap);
         snap
     }
+}
+
+/// Wall-clock epoch milliseconds for live detector observations.
+fn now_millis() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 /// Append with a bounded log: oldest rows fall off first.
