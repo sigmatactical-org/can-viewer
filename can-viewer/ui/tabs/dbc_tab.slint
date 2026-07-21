@@ -171,197 +171,202 @@ export component DbcTab inherits Rectangle {
                         HeaderCell { text: "Sender"; width: 100px; }
                         HeaderCell { text: "Signals"; horizontal-stretch: 1; }
                     }
-                    ListView {
+                    // The message list; the selected message expands inline,
+                    // its detail + signals nested directly under its row.
+                    ScrollView {
                         vertical-stretch: 1;
-                        for msg[i] in root.messages: TableRow {
-                            selected: i == root.selected-message;
-                            clicked => { root.message-selected(i); }
-                            Cell { text: msg.id; width: 80px; color: SigmaTheme.accent-amber; }
-                            Cell { text: msg.name; width: 140px; }
-                            Cell { text: msg.dlc; width: 56px; color: SigmaTheme.text-dim; }
-                            Cell { text: msg.sender; width: 100px; color: SigmaTheme.text-dim; }
-                            Cell { text: msg.signal-count; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
-                        }
-                    }
-
-                    if root.selected-message >= 0: Rectangle {
-                        vertical-stretch: 1;
-                        background: SigmaTheme.surface-raised.transparentize(0.5);
-                        border-radius: 4px;
-                        border-width: 1px;
-                        border-color: SigmaTheme.border;
-
-                        ScrollView {
-                            VerticalLayout {
-                                padding: 10px;
-                                spacing: 8px;
-                                alignment: start;
-
-                                HorizontalLayout {
-                                    spacing: 8px;
-                                    alignment: start;
-                                    CompactField {
-                                        label: "ID (hex)";
-                                        text <=> root.edit-message-id;
-                                        read-only: !root.editing;
-                                        width: 88px;
-                                        edited => { root.field-edited(); }
-                                    }
-                                    CompactField {
-                                        label: "Name";
-                                        text <=> root.edit-message-name;
-                                        read-only: !root.editing;
-                                        horizontal-stretch: 1;
-                                        edited => { root.field-edited(); }
-                                    }
-                                    CompactField {
-                                        label: "DLC";
-                                        text <=> root.edit-message-dlc;
-                                        read-only: !root.editing;
-                                        width: 48px;
-                                        edited => { root.field-edited(); }
-                                    }
-                                    CompactField {
-                                        label: "Sender";
-                                        text <=> root.edit-message-sender;
-                                        read-only: !root.editing;
-                                        width: 120px;
-                                        edited => { root.field-edited(); }
-                                    }
+                        VerticalLayout {
+                            spacing: 2px;
+                            alignment: start;
+                            for msg[i] in root.messages: VerticalLayout {
+                                TableRow {
+                                    selected: i == root.selected-message;
+                                    clicked => { root.message-selected(i); }
+                                    Cell { text: msg.id; width: 80px; color: SigmaTheme.accent-amber; }
+                                    Cell { text: msg.name; width: 140px; }
+                                    Cell { text: msg.dlc; width: 56px; color: SigmaTheme.text-dim; }
+                                    Cell { text: msg.sender; width: 100px; color: SigmaTheme.text-dim; }
+                                    Cell { text: msg.signal-count; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
                                 }
 
-                                HorizontalLayout {
-                                    spacing: 6px;
-                                    alignment: start;
-                                    Text {
-                                        text: "Signals (" + root.signals.length + ")";
-                                        color: SigmaTheme.text;
-                                        font-weight: 600;
-                                        vertical-alignment: center;
-                                    }
-                                    Rectangle { horizontal-stretch: 1; }
-                                    if root.editing: ToolbarButton { label: "+ Signal"; clicked => { root.add-signal(); } }
-                                    if root.editing: ToolbarButton { label: "− Signal"; danger: true; clicked => { root.delete-signal(); } }
-                                }
+                                if i == root.selected-message: Rectangle {
+                                    background: SigmaTheme.surface-raised.transparentize(0.5);
+                                    border-radius: 4px;
+                                    border-width: 1px;
+                                    border-color: SigmaTheme.border;
 
-                                if root.signals.length == 0: Text {
-                                    text: "This message has no signals yet.";
-                                    color: SigmaTheme.text-dim;
-                                    font-size: SigmaTheme.font-size-small;
-                                }
-
-                                if root.signals.length > 0: VerticalLayout {
-                                    TableHeader {
-                                        HeaderCell { text: "Signal"; width: 120px; }
-                                        HeaderCell { text: "Start"; width: 56px; }
-                                        HeaderCell { text: "Length"; width: 56px; }
-                                        HeaderCell { text: "Order"; width: 72px; }
-                                        HeaderCell { text: "Factor"; width: 64px; }
-                                        HeaderCell { text: "Unit"; horizontal-stretch: 1; }
-                                    }
-                                    for sig[j] in root.signals: TableRow {
-                                        selected: j == root.selected-signal;
-                                        clicked => { root.signal-selected(j); }
-                                        Cell { text: sig.name; width: 120px; color: SigmaTheme.accent; }
-                                        Cell { text: sig.start-bit; width: 56px; color: SigmaTheme.text-dim; }
-                                        Cell { text: sig.length; width: 56px; color: SigmaTheme.text-dim; }
-                                        Cell {
-                                            text: sig.byte-order;
-                                            width: 72px;
-                                            color: sig.byte-order == "Motorola"
-                                                ? SigmaTheme.accent-amber
-                                                : SigmaTheme.text-dim;
-                                        }
-                                        Cell { text: "×" + sig.factor; width: 64px; color: SigmaTheme.text-dim; }
-                                        Cell { text: sig.unit; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
-                                    }
-                                }
-
-                                if root.selected-signal >= 0: HorizontalLayout {
-                                    spacing: 8px;
-                                    alignment: start;
-                                    CompactField {
-                                        label: "Name";
-                                        text <=> root.edit-signal-name;
-                                        read-only: !root.editing;
-                                        horizontal-stretch: 1;
-                                        edited => { root.field-edited(); }
-                                    }
-                                    CompactField {
-                                        label: "Start";
-                                        text <=> root.edit-signal-start;
-                                        read-only: !root.editing;
-                                        width: 52px;
-                                        edited => { root.field-edited(); }
-                                    }
-                                    CompactField {
-                                        label: "Length";
-                                        text <=> root.edit-signal-length;
-                                        read-only: !root.editing;
-                                        width: 52px;
-                                        edited => { root.field-edited(); }
-                                    }
                                     VerticalLayout {
-                                        spacing: 2px;
-                                        width: 168px;
-                                        Text {
-                                            text: "Endian";
+                                        padding: 10px;
+                                        spacing: 8px;
+                                        alignment: start;
+
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            alignment: start;
+                                            CompactField {
+                                                label: "ID (hex)";
+                                                text <=> root.edit-message-id;
+                                                read-only: !root.editing;
+                                                width: 88px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            CompactField {
+                                                label: "Name";
+                                                text <=> root.edit-message-name;
+                                                read-only: !root.editing;
+                                                horizontal-stretch: 1;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            CompactField {
+                                                label: "DLC";
+                                                text <=> root.edit-message-dlc;
+                                                read-only: !root.editing;
+                                                width: 48px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            CompactField {
+                                                label: "Sender";
+                                                text <=> root.edit-message-sender;
+                                                read-only: !root.editing;
+                                                width: 120px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                        }
+
+                                        HorizontalLayout {
+                                            spacing: 6px;
+                                            alignment: start;
+                                            Text {
+                                                text: "Signals (" + root.signals.length + ")";
+                                                color: SigmaTheme.text;
+                                                font-weight: 600;
+                                                vertical-alignment: center;
+                                            }
+                                            Rectangle { horizontal-stretch: 1; }
+                                            if root.editing: ToolbarButton { label: "+ Signal"; clicked => { root.add-signal(); } }
+                                            if root.editing: ToolbarButton { label: "− Signal"; danger: true; clicked => { root.delete-signal(); } }
+                                        }
+
+                                        if root.signals.length == 0: Text {
+                                            text: "This message has no signals yet.";
                                             color: SigmaTheme.text-dim;
                                             font-size: SigmaTheme.font-size-small;
-                                            height: 14px;
                                         }
-                                        HorizontalLayout {
-                                            spacing: 4px;
-                                            ToolbarButton {
-                                                label: "Intel";
-                                                height: 24px;
-                                                selected: root.edit-signal-byte-order == "Intel";
-                                                enabled: root.editing;
-                                                clicked => {
-                                                    root.edit-signal-byte-order = "Intel";
-                                                    root.field-edited();
-                                                }
-                                            }
-                                            ToolbarButton {
-                                                label: "Motorola";
-                                                height: 24px;
-                                                selected: root.edit-signal-byte-order == "Motorola";
-                                                enabled: root.editing;
-                                                clicked => {
-                                                    root.edit-signal-byte-order = "Motorola";
-                                                    root.field-edited();
-                                                }
-                                            }
-                                        }
-                                    }
-                                    CompactField {
-                                        label: "Factor";
-                                        text <=> root.edit-signal-factor;
-                                        read-only: !root.editing;
-                                        width: 64px;
-                                        edited => { root.field-edited(); }
-                                    }
-                                    CompactField {
-                                        label: "Offset";
-                                        text <=> root.edit-signal-offset;
-                                        read-only: !root.editing;
-                                        width: 64px;
-                                        edited => { root.field-edited(); }
-                                    }
-                                    CompactField {
-                                        label: "Unit";
-                                        text <=> root.edit-signal-unit;
-                                        read-only: !root.editing;
-                                        width: 72px;
-                                        edited => { root.field-edited(); }
-                                    }
-                                }
 
-                                SignalBitMap {
-                                    bands: root.bit-bands;
-                                    summary: root.bit-summary;
-                                    dlc: root.bit-dlc;
-                                    cell-clicked(sig-idx) => { root.bit-cell-clicked(sig-idx); }
+                                        if root.signals.length > 0: VerticalLayout {
+                                            TableHeader {
+                                                HeaderCell { text: "Signal"; width: 120px; }
+                                                HeaderCell { text: "Start"; width: 56px; }
+                                                HeaderCell { text: "Length"; width: 56px; }
+                                                HeaderCell { text: "Order"; width: 72px; }
+                                                HeaderCell { text: "Factor"; width: 64px; }
+                                                HeaderCell { text: "Unit"; horizontal-stretch: 1; }
+                                            }
+                                            for sig[j] in root.signals: TableRow {
+                                                selected: j == root.selected-signal;
+                                                clicked => { root.signal-selected(j); }
+                                                Cell { text: sig.name; width: 120px; color: SigmaTheme.accent; }
+                                                Cell { text: sig.start-bit; width: 56px; color: SigmaTheme.text-dim; }
+                                                Cell { text: sig.length; width: 56px; color: SigmaTheme.text-dim; }
+                                                Cell {
+                                                    text: sig.byte-order;
+                                                    width: 72px;
+                                                    color: sig.byte-order == "Motorola"
+                                                        ? SigmaTheme.accent-amber
+                                                        : SigmaTheme.text-dim;
+                                                }
+                                                Cell { text: "×" + sig.factor; width: 64px; color: SigmaTheme.text-dim; }
+                                                Cell { text: sig.unit; horizontal-stretch: 1; color: SigmaTheme.text-dim; }
+                                            }
+                                        }
+
+                                        if root.selected-signal >= 0: HorizontalLayout {
+                                            spacing: 8px;
+                                            alignment: start;
+                                            CompactField {
+                                                label: "Name";
+                                                text <=> root.edit-signal-name;
+                                                read-only: !root.editing;
+                                                horizontal-stretch: 1;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            CompactField {
+                                                label: "Start";
+                                                text <=> root.edit-signal-start;
+                                                read-only: !root.editing;
+                                                width: 52px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            CompactField {
+                                                label: "Length";
+                                                text <=> root.edit-signal-length;
+                                                read-only: !root.editing;
+                                                width: 52px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            VerticalLayout {
+                                                spacing: 2px;
+                                                width: 168px;
+                                                Text {
+                                                    text: "Endian";
+                                                    color: SigmaTheme.text-dim;
+                                                    font-size: SigmaTheme.font-size-small;
+                                                    height: 14px;
+                                                }
+                                                HorizontalLayout {
+                                                    spacing: 4px;
+                                                    ToolbarButton {
+                                                        label: "Intel";
+                                                        height: 24px;
+                                                        selected: root.edit-signal-byte-order == "Intel";
+                                                        enabled: root.editing;
+                                                        clicked => {
+                                                            root.edit-signal-byte-order = "Intel";
+                                                            root.field-edited();
+                                                        }
+                                                    }
+                                                    ToolbarButton {
+                                                        label: "Motorola";
+                                                        height: 24px;
+                                                        selected: root.edit-signal-byte-order == "Motorola";
+                                                        enabled: root.editing;
+                                                        clicked => {
+                                                            root.edit-signal-byte-order = "Motorola";
+                                                            root.field-edited();
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            CompactField {
+                                                label: "Factor";
+                                                text <=> root.edit-signal-factor;
+                                                read-only: !root.editing;
+                                                width: 64px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            CompactField {
+                                                label: "Offset";
+                                                text <=> root.edit-signal-offset;
+                                                read-only: !root.editing;
+                                                width: 64px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                            CompactField {
+                                                label: "Unit";
+                                                text <=> root.edit-signal-unit;
+                                                read-only: !root.editing;
+                                                width: 72px;
+                                                edited => { root.field-edited(); }
+                                            }
+                                        }
+
+                                        SignalBitMap {
+                                            bands: root.bit-bands;
+                                            summary: root.bit-summary;
+                                            dlc: root.bit-dlc;
+                                            cell-clicked(sig-idx) => { root.bit-cell-clicked(sig-idx); }
+                                        }
+                                    }
                                 }
                             }
                         }
