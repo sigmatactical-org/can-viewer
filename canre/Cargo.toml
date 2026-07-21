@@ -11,6 +11,6 @@ description = "Definitive CAN signal reverse-engineering CLI (survey, diff, DBC 
 
 [dependencies]
 sigma-diagnostics = { path = "../sigma-diagnostics" }
-clap = { version = "4.6.1", features = ["derive"] }
+clap = { version = "4.6.3", features = ["derive"] }
 dbc-rs = { workspace = true }
 serde_json = { workspace = true }

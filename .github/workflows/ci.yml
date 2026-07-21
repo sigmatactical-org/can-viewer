@@ -24,7 +24,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  MSRV: "1.97.0"
 
 jobs:
   test:
@@ -34,21 +33,21 @@ jobs:
       run:
         working-directory: embedded/sigma-diagnostics
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: embedded/sigma-diagnostics
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-telemetry
           path: embedded/sigma-racer-telemetry
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-sidearm
           path: embedded/sigma-racer-sidearm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97.1
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -70,23 +69,21 @@ jobs:
       run:
         working-directory: embedded/sigma-diagnostics
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: embedded/sigma-diagnostics
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-telemetry
           path: embedded/sigma-racer-telemetry
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-sidearm
           path: embedded/sigma-racer-sidearm
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.MSRV }}
+      - uses: dtolnay/rust-toolchain@1.97.1
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -108,21 +105,21 @@ jobs:
       run:
         working-directory: embedded/sigma-diagnostics
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: embedded/sigma-diagnostics
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-telemetry
           path: embedded/sigma-racer-telemetry
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-sidearm
           path: embedded/sigma-racer-sidearm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97.1
         with:
           components: clippy
 
@@ -146,13 +143,12 @@ jobs:
       run:
         working-directory: embedded/sigma-diagnostics
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: embedded/sigma-diagnostics
 
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@1.97.1
         with:
-          toolchain: ${{ env.MSRV }}
           components: rustfmt
 
       - run: cargo fmt --all -- --check
@@ -164,21 +160,21 @@ jobs:
       run:
         working-directory: embedded/sigma-diagnostics
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: embedded/sigma-diagnostics
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-telemetry
           path: embedded/sigma-racer-telemetry
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: sigmatactical-org/sigma-racer-sidearm
           path: embedded/sigma-racer-sidearm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97.1
 
       - uses: Swatinem/rust-cache@v2
         with:
