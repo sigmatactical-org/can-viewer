@@ -130,9 +130,7 @@ mod tests {
     fn multi_frame_reassembly_with_padding() {
         // 12-byte message: FF carries 6, CF carries the rest (+ padding).
         let mut r = IsotpReassembler::new();
-        assert!(r
-            .push(1.0, &[0x10, 0x0C, 0x41, 0x02, 1, 2, 3, 4])
-            .is_none());
+        assert!(r.push(1.0, &[0x10, 0x0C, 0x41, 0x02, 1, 2, 3, 4]).is_none());
         let msg = r
             .push(1.1, &[0x21, 5, 6, 7, 8, 9, 10, 0xAA])
             .expect("complete");
@@ -143,9 +141,7 @@ mod tests {
     #[test]
     fn out_of_sequence_resets() {
         let mut r = IsotpReassembler::new();
-        assert!(r
-            .push(1.0, &[0x10, 0x0C, 0x41, 0x02, 1, 2, 3, 4])
-            .is_none());
+        assert!(r.push(1.0, &[0x10, 0x0C, 0x41, 0x02, 1, 2, 3, 4]).is_none());
         // Wrong sequence number (0x22 instead of 0x21) drops the transfer.
         assert!(r.push(1.1, &[0x22, 5, 6, 7, 8, 9, 10, 11]).is_none());
         assert!(r.push(1.2, &[0x21, 5, 6, 7, 8, 9, 10, 11]).is_none());

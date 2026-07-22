@@ -66,7 +66,9 @@ pub fn render_markdown(audit: &MaintenanceAudit) -> String {
                 escape_cell(&e.edge),
                 escape_cell(e.severity.as_deref().unwrap_or("")),
                 escape_cell(&e.message),
-                e.odometer_km.map(|k| format!("{k:.0} km")).unwrap_or_default(),
+                e.odometer_km
+                    .map(|k| format!("{k:.0} km"))
+                    .unwrap_or_default(),
             ));
         }
         md.push('\n');

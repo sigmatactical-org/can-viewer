@@ -135,13 +135,9 @@ pub fn correlate(
             if options.excluded_ids.contains(can_id) {
                 continue;
             }
-            result.matches.extend(match_id(
-                *can_id,
-                *is_extended,
-                group,
-                reference,
-                options,
-            ));
+            result
+                .matches
+                .extend(match_id(*can_id, *is_extended, group, reference, options));
         }
         // Widest (most informative) first, then tightest fit.
         result.matches.sort_by(|a, b| {
@@ -181,7 +177,10 @@ fn match_id(
     }
     let distinct_reference_values = {
         let mut seen = std::collections::HashSet::new();
-        aligned.iter().filter(|(_, v)| seen.insert(v.to_bits())).count()
+        aligned
+            .iter()
+            .filter(|(_, v)| seen.insert(v.to_bits()))
+            .count()
     };
     if distinct_reference_values < options.min_distinct_values {
         return Vec::new();
@@ -268,10 +267,7 @@ fn try_fit(
     }
     let offset = mean_val - factor * mean_raw;
 
-    let scale = aligned
-        .iter()
-        .map(|(_, v)| v.abs())
-        .fold(1.0f64, f64::max);
+    let scale = aligned.iter().map(|(_, v)| v.abs()).fold(1.0f64, f64::max);
     let bound = resolution / 2.0 + factor.abs() / 2.0 + 1e-9 * scale;
     let max_residual = residual(&raws, aligned, factor, offset);
     if max_residual > bound {
@@ -377,18 +373,18 @@ mod tests {
             .map(|i| {
                 let t = f64::from(i) * 0.020;
                 let raw = raw_at(t);
-                frame(0x156, t, &[(raw >> 8) as u8, raw as u8, 0x00, (i % 4) as u8])
+                frame(
+                    0x156,
+                    t,
+                    &[(raw >> 8) as u8, raw as u8, 0x00, (i % 4) as u8],
+                )
             })
             .collect();
         let samples: Vec<(f64, f64)> = (1..150u32)
             .map(|i| {
                 let t = f64::from(i) * 0.200 + 0.005;
                 // Reference is what the ECU reports: raw/4 of the latest frame.
-                let latest = frames
-                    .iter()
-                    .rev()
-                    .find(|f| f.timestamp <= t)
-                    .unwrap();
+                let latest = frames.iter().rev().find(|f| f.timestamp <= t).unwrap();
                 let raw = (u16::from(latest.data[0]) << 8) | u16::from(latest.data[1]);
                 (t, f64::from(raw) / 4.0)
             })
@@ -434,7 +430,10 @@ mod tests {
         let report = correlate(&frames, &[reference], &CorrelationOptions::default());
         let series = &report.series[0];
         assert!(
-            series.matches.iter().all(|m| m.can_id != 0x156 || m.field.length != 16),
+            series
+                .matches
+                .iter()
+                .all(|m| m.can_id != 0x156 || m.field.length != 16),
             "perturbed reference must not yield the 16-bit match"
         );
     }

@@ -27,7 +27,11 @@ fn j1850_crc(data: &[u8]) -> u8 {
     for &b in data {
         crc ^= b;
         for _ in 0..8 {
-            crc = if crc & 0x80 != 0 { (crc << 1) ^ 0x1D } else { crc << 1 };
+            crc = if crc & 0x80 != 0 {
+                (crc << 1) ^ 0x1D
+            } else {
+                crc << 1
+            };
         }
     }
     crc ^ 0xFF
@@ -38,10 +42,10 @@ fn survey_proves_counter_and_crc_through_mdf4() {
     let frames: Vec<CanFrameDto> = (0..500u32)
         .map(|i| {
             let mut data = vec![
-                (i % 16) as u8,          // 4-bit counter, low nibble byte 0
-                (i * 7 % 251) as u8,     // varying data
-                (i * 13 % 253) as u8,    // varying data
-                0x5A,                    // constant
+                (i % 16) as u8,       // 4-bit counter, low nibble byte 0
+                (i * 7 % 251) as u8,  // varying data
+                (i * 13 % 253) as u8, // varying data
+                0x5A,                 // constant
             ];
             data.push(j1850_crc(&data));
             CanFrameDto {
@@ -100,7 +104,11 @@ fn survey_proves_counter_and_crc_through_mdf4() {
 
     // Timing is measured, not invented: 20 ms period.
     let timing = id.timing.as_ref().expect("timing stats");
-    assert!((timing.median_ms - 20.0).abs() < 0.5, "median {}", timing.median_ms);
+    assert!(
+        (timing.median_ms - 20.0).abs() < 0.5,
+        "median {}",
+        timing.median_ms
+    );
 }
 
 #[test]

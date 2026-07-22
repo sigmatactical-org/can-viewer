@@ -7,9 +7,7 @@
 use super::helpers::vec_model;
 use crate::services::{load_mdf4, survey_frames, BitState, IdSurvey, SurveyOptions, SurveyReport};
 use crate::state::AppState;
-use crate::{
-    AnalyzeBitCell, AnalyzeBitRow, AnalyzeFactRow, AnalyzeIdRow, SigmaDiagnostics,
-};
+use crate::{AnalyzeBitCell, AnalyzeBitRow, AnalyzeFactRow, AnalyzeIdRow, SigmaDiagnostics};
 use parking_lot::Mutex;
 use slint::Weak;
 use std::sync::Arc;
@@ -213,9 +211,7 @@ fn fact_rows(id: &IdSurvey) -> Vec<AnalyzeFactRow> {
             kind: "MUX".into(),
             text: format!(
                 "selector start {} len {} — {} values with differing layouts",
-                m.selector.start_bit,
-                m.selector.length,
-                m.distinct_values
+                m.selector.start_bit, m.selector.length, m.distinct_values
             )
             .into(),
         });

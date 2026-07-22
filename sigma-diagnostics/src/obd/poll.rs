@@ -26,13 +26,12 @@ pub struct SupportedPids {
 #[cfg(target_os = "linux")]
 mod linux {
     use super::*;
-    use socketcan::{CanSocket, EmbeddedFrame, Socket, StandardId};
     use socketcan::embedded_can;
+    use socketcan::{CanSocket, EmbeddedFrame, Socket, StandardId};
     use std::time::{Duration, Instant};
 
     fn open(interface: &str) -> Result<CanSocket, String> {
-        let socket =
-            CanSocket::open(interface).map_err(|e| format!("open {interface}: {e}"))?;
+        let socket = CanSocket::open(interface).map_err(|e| format!("open {interface}: {e}"))?;
         socket
             .set_read_timeout(Duration::from_millis(200))
             .map_err(|e| format!("set timeout: {e}"))?;
@@ -40,11 +39,9 @@ mod linux {
     }
 
     fn send(socket: &CanSocket, id: u32, payload: &[u8; 8]) -> Result<(), String> {
-        let frame = socketcan::CanFrame::new(
-            StandardId::new(id as u16).ok_or("bad CAN id")?,
-            payload,
-        )
-        .ok_or("frame build failed")?;
+        let frame =
+            socketcan::CanFrame::new(StandardId::new(id as u16).ok_or("bad CAN id")?, payload)
+                .ok_or("frame build failed")?;
         socket
             .write_frame(&frame)
             .map_err(|e| format!("transmit: {e}"))

@@ -16,8 +16,7 @@ impl MaintenanceScheduleConfig {
                 .unwrap_or_else(|_| "http://updates.sigma.localtest.me:30080".into())
                 .trim_end_matches('/')
                 .to_owned(),
-            model: std::env::var("SIGMA_VEHICLE_MODEL")
-                .unwrap_or_else(|_| "sigma-racer".into()),
+            model: std::env::var("SIGMA_VEHICLE_MODEL").unwrap_or_else(|_| "sigma-racer".into()),
         }
     }
 

@@ -242,7 +242,9 @@ fn run_obd(command: ObdCommand) -> Result<(), String> {
             for pid in &supported.pids {
                 match pid_def_name(*pid) {
                     Some(name) => println!("  0x{pid:02X}  {name}"),
-                    None => println!("  0x{pid:02X}  (no standard scaling — not usable as ground truth)"),
+                    None => println!(
+                        "  0x{pid:02X}  (no standard scaling — not usable as ground truth)"
+                    ),
                 }
             }
         }

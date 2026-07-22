@@ -45,13 +45,14 @@ pub use updates::{
 };
 
 pub use vehicle::{
-    audit, build_diagnosis_advisor, default_records_dir, default_sessions_dir, fetch_channel_latest,
-    fetch_latest_schedule, load_m7_draft_dbc, new_session_path, perform_maintenance_audit,
-    render_markdown, request_log_export, save_maintenance_record, AiConfig, AnomalyRow, AuditItem,
-    ChannelRelease, DiagnosisAdvisor, DiagnosisReading, DiagnosisSnapshot, ErrorRow, ItemStatus,
-    LogExportRequest, MaintenanceAction, MaintenanceAudit, MaintenanceScheduleConfig,
-    MaintenanceService, ModelAdvisor, OtaConfig, ReadingSeverity, ReadingSource, RuleBasedAdvisor,
-    SavedRecord, SettingsService, StubMaintenanceService, StubSettingsService, TelemetryRecorder,
-    TelemetryReplayer, VehicleLinkConfig, VehicleSession, VehicleSessionStatus, VehicleSetting,
-    VehicleTransport, VitalSignal, DEFAULT_WIFI_PORT, M7_DRAFT_DBC, M7_DRAFT_DBC_NAME,
+    audit, build_diagnosis_advisor, default_records_dir, default_sessions_dir,
+    fetch_channel_latest, fetch_latest_schedule, load_m7_draft_dbc, new_session_path,
+    perform_maintenance_audit, render_markdown, request_log_export, save_maintenance_record,
+    AiConfig, AnomalyRow, AuditItem, ChannelRelease, DiagnosisAdvisor, DiagnosisReading,
+    DiagnosisSnapshot, ErrorRow, ItemStatus, LogExportRequest, MaintenanceAction, MaintenanceAudit,
+    MaintenanceScheduleConfig, MaintenanceService, ModelAdvisor, OtaConfig, ReadingSeverity,
+    ReadingSource, RuleBasedAdvisor, SavedRecord, SettingsService, StubMaintenanceService,
+    StubSettingsService, TelemetryRecorder, TelemetryReplayer, VehicleLinkConfig, VehicleSession,
+    VehicleSessionStatus, VehicleSetting, VehicleTransport, VitalSignal, DEFAULT_WIFI_PORT,
+    M7_DRAFT_DBC, M7_DRAFT_DBC_NAME,
 };

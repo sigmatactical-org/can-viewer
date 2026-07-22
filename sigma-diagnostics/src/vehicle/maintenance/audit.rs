@@ -251,7 +251,11 @@ fn threshold_status(remaining: f64, interval: f64) -> ItemStatus {
 
 /// Keep the worse of two statuses.
 fn worse(a: ItemStatus, b: ItemStatus) -> ItemStatus {
-    if b.rank() > a.rank() { b } else { a }
+    if b.rank() > a.rank() {
+        b
+    } else {
+        a
+    }
 }
 
 /// "550 km remaining" / "overdue by 120 km".
